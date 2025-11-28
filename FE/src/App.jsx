@@ -76,7 +76,6 @@ import VerifyOtp from "./pages/VerifyOtp.jsx";
 import RequestUpgrade from './pages/Buyer/RequestUpgrade.jsx';
 import MyUpgradeRequests from './pages/Buyer/MyUpgradeRequests.jsx';
 import SignContract from './pages/Buyer/SignContract.jsx';
-import TestApi from './pages/TestApi.jsx';
 // Loading component
 const LoadingSpinner = () => (
   <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '100vh' }}>
@@ -113,7 +112,6 @@ export default function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/verify-otp" element={<VerifyOtp />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/test-api" element={<TestApi />} />
           
           {/* User Routes - Requires Authentication */}
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
