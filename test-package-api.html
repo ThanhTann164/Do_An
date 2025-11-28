@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Package API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .result {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+            border-left: 4px solid #4CAF50;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .error {
+            border-left-color: #f44336;
+            background: #ffebee;
+        }
+        .success {
+            border-left-color: #4CAF50;
+            background: #e8f5e9;
+        }
+        input {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 300px;
+        }
+        h2 {
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Package API</h1>
+
+    <div class="container">
+        <h2>1. Login</h2>
+        <input type="text" id="email" placeholder="Email" value="premium_test@example.com">
+        <input type="password" id="password" placeholder="Password" value="123456">
+        <button onclick="login()">Login</button>
+        <div id="loginResult" class="result" style="display:none;"></div>
+    </div>
+
+    <div class="container">
+        <h2>2. Get My Package</h2>
+        <button onclick="getMyPackage()">Get My Package</button>
+        <div id="packageResult" class="result" style="display:none;"></div>
+    </div>
+
+    <div class="container">
+        <h2>3. Get All Packages</h2>
+        <button onclick="getAllPackages()">Get All Packages</button>
+        <div id="allPackagesResult" class="result" style="display:none;"></div>
+    </div>
+
+    <div class="container">
+        <h2>4. Test Purchase</h2>
+        <input type="number" id="packageId" placeholder="Package ID (11=PRO, 12=PREMIUM)" value="12">
+        <button onclick="purchasePackage()">Purchase Package</button>
+        <div id="purchaseResult" class="result" style="display:none;"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3001';
+        let token = localStorage.getItem('token') || '';
+
+        function showResult(elementId, data, isError = false) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = 'result ' + (isError ? 'error' : 'success');
+            element.textContent = JSON.stringify(data, null, 2);
+        }
+
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch(`${API_URL}/api/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+                
+                if (data.success && data.token) {
+                    token = data.token;
+                    localStorage.setItem('token', token);
+                    showResult('loginResult', { success: true, message: 'Login thành công!', token: token.substring(0, 50) + '...' });
+                } else {
+                    showResult('loginResult', data, true);
+                }
+            } catch (error) {
+                showResult('loginResult', { error: error.message }, true);
+            }
+        }
+
+        async function getMyPackage() {
+            if (!token) {
+                showResult('packageResult', { error: 'Chưa login! Vui lòng login trước.' }, true);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/api/packages/my-package`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                showResult('packageResult', data, !data.success);
+            } catch (error) {
+                showResult('packageResult', { error: error.message }, true);
+            }
+        }
+
+        async function getAllPackages() {
+            try {
+                const response = await fetch(`${API_URL}/api/packages`, {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await response.json();
+                showResult('allPackagesResult', data, !data.success);
+            } catch (error) {
+                showResult('allPackagesResult', { error: error.message }, true);
+            }
+        }
+
+        async function purchasePackage() {
+            if (!token) {
+                showResult('purchaseResult', { error: 'Chưa login! Vui lòng login trước.' }, true);
+                return;
+            }
+
+            const packageId = parseInt(document.getElementById('packageId').value);
+
+            try {
+                const response = await fetch(`${API_URL}/api/packages/purchase`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        package_id: packageId,
+                        payment_method: 'manual',
+                        transaction_id: 'TEST_' + Date.now()
+                    })
+                });
+
+                const data = await response.json();
+                showResult('purchaseResult', data, !data.success);
+            } catch (error) {
+                showResult('purchaseResult', { error: error.message }, true);
+            }
+        }
+
+        // Auto load token if exists
+        if (token) {
+            document.getElementById('loginResult').style.display = 'block';
+            document.getElementById('loginResult').textContent = 'Đã có token: ' + token.substring(0, 50) + '...';
+        }
+    </script>
+</body>
+</html>

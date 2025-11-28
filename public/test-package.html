@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Package System</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 { font-size: 2.5rem; margin-bottom: 10px; }
+        .header p { opacity: 0.9; font-size: 1.1rem; }
+        .content { padding: 30px; }
+        .section { 
+            margin-bottom: 40px; 
+            padding: 25px;
+            border: 2px solid #f1f5f9;
+            border-radius: 15px;
+            background: #fafafa;
+        }
+        .section h2 { 
+            color: #1e293b; 
+            margin-bottom: 20px; 
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .button-group { 
+            display: flex; 
+            gap: 15px; 
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        .button { 
+            padding: 12px 24px; 
+            border: none; 
+            border-radius: 10px; 
+            cursor: pointer; 
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        .button.primary { background: #3b82f6; color: white; }
+        .button.success { background: #10b981; color: white; }
+        .button.warning { background: #f59e0b; color: white; }
+        .button.danger { background: #ef4444; color: white; }
+        .button.premium { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: white; }
+        .result { 
+            margin: 15px 0; 
+            padding: 20px; 
+            border-radius: 10px; 
+            font-family: 'Courier New', monospace; 
+            white-space: pre-wrap; 
+            max-height: 400px;
+            overflow-y: auto;
+            border-left: 4px solid #e2e8f0;
+        }
+        .success { background: #dcfce7; border-left-color: #10b981; color: #065f46; }
+        .error { background: #fee2e2; border-left-color: #ef4444; color: #991b1b; }
+        .info { background: #dbeafe; border-left-color: #3b82f6; color: #1e40af; }
+        .status-bar {
+            background: #1f2937;
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+        }
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge.free { background: #f1f5f9; color: #64748b; }
+        .badge.pro { background: #dbeafe; color: #1d4ed8; }
+        .badge.premium { background: #fef3c7; color: #d97706; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 Package System Test</h1>
+            <p>Test toàn bộ chức năng FREE / PRO / PREMIUM</p>
+        </div>
+
+        <div class="status-bar">
+            <div class="status-indicator">
+                <div class="status-dot"></div>
+                <span>Server Status: <span id="server-status">Checking...</span></span>
+            </div>
+            <div>
+                <span>Current User: <span id="current-user">None</span></span>
+                <span class="badge" id="current-package">FREE</span>
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- Authentication Section -->
+            <div class="section">
+                <h2>🔐 Authentication</h2>
+                <div class="button-group">
+                    <button class="button success" onclick="loginUser('pro_test@example.com', '123456', 'PRO')">
+                        ⚡ Login PRO User
+                    </button>
+                    <button class="button premium" onclick="loginUser('premium_test@example.com', '123456', 'PREMIUM')">
+                        👑 Login PREMIUM User
+                    </button>
+                    <button class="button primary" onclick="loginUser('free_test@example.com', '123456', 'FREE')">
+                        🆓 Login FREE User
+                    </button>
+                    <button class="button danger" onclick="logout()">
+                        🚪 Logout
+                    </button>
+                </div>
+                <div id="auth-result" class="result info">Chưa đăng nhập</div>
+            </div>
+
+            <!-- Package Info Section -->
+            <div class="section">
+                <h2>📦 Package Information</h2>
+                <div class="button-group">
+                    <button class="button primary" onclick="getMyPackage()">
+                        📋 Get My Package
+                    </button>
+                    <button class="button primary" onclick="getAllPackages()">
+                        📦 Get All Packages
+                    </button>
+                </div>
+                <div id="package-result" class="result info">Click để xem thông tin gói</div>
+            </div>
+
+            <!-- Feature Tests -->
+            <div class="grid">
+                <!-- AI Features -->
+                <div class="card">
+                    <h3>🤖 AI Features</h3>
+                    <div class="button-group">
+                        <button class="button warning" onclick="testAI('optimize-title')">
+                            ✨ Test AI Title
+                        </button>
+                        <button class="button warning" onclick="testAI('generate-description')">
+                            📝 Test AI Description
+                        </button>
+                    </div>
+                    <div id="ai-result" class="result info">Chưa test AI</div>
+                </div>
+
+                <!-- Boost Features -->
+                <div class="card">
+                    <h3>🚀 Boost Features</h3>
+                    <div class="button-group">
+                        <button class="button success" onclick="testBoost()">
+                            🚀 Test Boost
+                        </button>
+                        <button class="button primary" onclick="getMyBoosts()">
+                            📊 My Boosts
+                        </button>
+                    </div>
+                    <div id="boost-result" class="result info">Chưa test boost</div>
+                </div>
+
+                <!-- Post Limits -->
+                <div class="card">
+                    <h3>📝 Post Limits</h3>
+                    <div class="button-group">
+                        <button class="button warning" onclick="testCreatePost()">
+                            ➕ Test Create Post
+                        </button>
+                        <button class="button primary" onclick="checkPostLimits()">
+                            📊 Check Limits
+                        </button>
+                    </div>
+                    <div id="post-result" class="result info">Chưa test đăng bài</div>
+                </div>
+            </div>
+
+            <!-- Dev Tools -->
+            <div class="section">
+                <h2>🛠️ Dev Tools</h2>
+                <div class="button-group">
+                    <button class="button danger" onclick="assignPackage('FREE')">
+                        🆓 Assign FREE
+                    </button>
+                    <button class="button success" onclick="assignPackage('PRO')">
+                        ⚡ Assign PRO
+                    </button>
+                    <button class="button premium" onclick="assignPackage('PREMIUM')">
+                        👑 Assign PREMIUM
+                    </button>
+                </div>
+                <div id="dev-result" class="result info">Dev tools ready</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3001';
+        let currentToken = localStorage.getItem('token');
+        let currentUser = null;
+
+        // Update UI elements
+        function updateStatus() {
+            document.getElementById('current-user').textContent = currentUser ? currentUser.email : 'None';
+            const packageBadge = document.getElementById('current-package');
+            if (currentUser && currentUser.package) {
+                packageBadge.textContent = currentUser.package;
+                packageBadge.className = `badge ${currentUser.package.toLowerCase()}`;
+            } else {
+                packageBadge.textContent = 'FREE';
+                packageBadge.className = 'badge free';
+            }
+        }
+
+        // Check server status
+        async function checkServerStatus() {
+            try {
+                const response = await fetch(`${API_URL}/api/packages`);
+                document.getElementById('server-status').textContent = response.ok ? 'Online' : 'Error';
+            } catch (error) {
+                document.getElementById('server-status').textContent = 'Offline';
+            }
+        }
+
+        // Show result in element
+        function showResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.textContent = typeof message === 'object' ? JSON.stringify(message, null, 2) : message;
+            element.className = `result ${type}`;
+        }
+
+        // API call helper
+        async function apiCall(endpoint, options = {}) {
+            try {
+                const headers = {
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                };
+
+                if (currentToken) {
+                    headers.Authorization = `Bearer ${currentToken}`;
+                }
+
+                const response = await fetch(`${API_URL}${endpoint}`, {
+                    ...options,
+                    headers
+                });
+
+                const data = await response.json();
+                
+                return {
+                    ok: response.ok,
+                    status: response.status,
+                    data
+                };
+            } catch (error) {
+                return {
+                    ok: false,
+                    status: 0,
+                    error: error.message
+                };
+            }
+        }
+
+        // Login user
+        async function loginUser(email, password, expectedPackage) {
+            const result = await apiCall('/api/login', {
+                method: 'POST',
+                body: JSON.stringify({ email, password })
+            });
+
+            if (result.ok && result.data.success) {
+                currentToken = result.data.token;
+                localStorage.setItem('token', currentToken);
+                currentUser = { email, package: expectedPackage };
+                updateStatus();
+                showResult('auth-result', `✅ Login thành công!\nEmail: ${email}\nPackage: ${expectedPackage}\nToken: ${currentToken.substring(0, 30)}...`, 'success');
+                
+                // Auto get package info
+                setTimeout(() => getMyPackage(), 500);
+            } else {
+                showResult('auth-result', `❌ Login thất bại: ${result.data?.message || result.error}`, 'error');
+            }
+        }
+
+        // Logout
+        function logout() {
+            currentToken = null;
+            currentUser = null;
+            localStorage.removeItem('token');
+            updateStatus();
+            showResult('auth-result', '🚪 Đã logout', 'info');
+        }
+
+        // Get my package
+        async function getMyPackage() {
+            if (!currentToken) {
+                showResult('package-result', '❌ Chưa login!', 'error');
+                return;
+            }
+
+            const result = await apiCall('/api/packages/my-package');
+            
+            if (result.ok) {
+                const packageName = result.data.data?.userPackage?.name || 'FREE';
+                if (currentUser) {
+                    currentUser.package = packageName;
+                    updateStatus();
+                }
+                showResult('package-result', `✅ Package Info:\n${JSON.stringify(result.data, null, 2)}`, 'success');
+            } else {
+                showResult('package-result', `❌ Lỗi: ${result.data?.message || result.error}`, 'error');
+            }
+        }
+
+        // Get all packages
+        async function getAllPackages() {
+            const result = await apiCall('/api/packages');
+            
+            if (result.ok) {
+                showResult('package-result', `✅ All Packages:\n${JSON.stringify(result.data, null, 2)}`, 'success');
+            } else {
+                showResult('package-result', `❌ Lỗi: ${result.data?.message || result.error}`, 'error');
+            }
+        }
+
+        // Test AI
+        async function testAI(type) {
+            if (!currentToken) {
+                showResult('ai-result', '❌ Chưa login!', 'error');
+                return;
+            }
+
+            const endpoints = {
+                'optimize-title': '/api/ai/optimize-title',
+                'generate-description': '/api/ai/generate-description'
+            };
+
+            const testData = {
+                'optimize-title': { title: 'Nhà đẹp cần bán gấp' },
+                'generate-description': { title: 'Căn hộ cao cấp', area: 80, price: 2000000000 }
+            };
+
+            const result = await apiCall(endpoints[type], {
+                method: 'POST',
+                body: JSON.stringify(testData[type])
+            });
+            
+            if (result.ok) {
+                showResult('ai-result', `✅ AI ${type}:\n${JSON.stringify(result.data, null, 2)}`, 'success');
+            } else {
+                showResult('ai-result', `❌ AI ${type} failed:\n${JSON.stringify(result.data, null, 2)}`, 'error');
+            }
+        }
+
+        // Test boost
+        async function testBoost() {
+            if (!currentToken) {
+                showResult('boost-result', '❌ Chưa login!', 'error');
+                return;
+            }
+
+            // Use house ID 1 for testing
+            const result = await apiCall('/api/houses/1/boost', {
+                method: 'POST',
+                body: JSON.stringify({ duration_hours: 6 })
+            });
+            
+            if (result.ok) {
+                showResult('boost-result', `✅ Boost thành công:\n${JSON.stringify(result.data, null, 2)}`, 'success');
+            } else {
+                showResult('boost-result', `❌ Boost thất bại:\n${JSON.stringify(result.data, null, 2)}`, 'error');
+            }
+        }
+
+        // Get my boosts
+        async function getMyBoosts() {
+            if (!currentToken) {
+                showResult('boost-result', '❌ Chưa login!', 'error');
+                return;
+            }
+
+            const result = await apiCall('/api/my-boosts');
+            
+            if (result.ok) {
+                showResult('boost-result', `✅ My Boosts:\n${JSON.stringify(result.data, null, 2)}`, 'success');
+            } else {
+                showResult('boost-result', `❌ Lỗi: ${result.data?.message || result.error}`, 'error');
+            }
+        }
+
+        // Test create post
+        async function testCreatePost() {
+            if (!currentToken) {
+                showResult('post-result', '❌ Chưa login!', 'error');
+                return;
+            }
+
+            const testPost = {
+                title: `Test Post ${Date.now()}`,
+                description: 'This is a test post',
+                price: 1000000,
+                propertyType: 'apartment',
+                area: 50,
+                city: 'Ho Chi Minh',
+                district: 'District 1',
+                ward: 'Ward 1',
+                address: '123 Test Street'
+            };
+
+            const result = await apiCall('/api/posts', {
+                method: 'POST',
+                body: JSON.stringify(testPost)
+            });
+            
+            if (result.ok) {
+                showResult('post-result', `✅ Post created:\n${JSON.stringify(result.data, null, 2)}`, 'success');
+            } else {
+                showResult('post-result', `❌ Post creation failed:\n${JSON.stringify(result.data, null, 2)}`, 'error');
+            }
+        }
+
+        // Check post limits
+        async function checkPostLimits() {
+            if (!currentToken) {
+                showResult('post-result', '❌ Chưa login!', 'error');
+                return;
+            }
+
+            // Get package info to see limits
+            const result = await apiCall('/api/packages/my-package');
+            
+            if (result.ok) {
+                const limits = result.data.data?.limits;
+                showResult('post-result', `✅ Post Limits:\n${JSON.stringify(limits, null, 2)}`, 'success');
+            } else {
+                showResult('post-result', `❌ Lỗi: ${result.data?.message || result.error}`, 'error');
+            }
+        }
+
+        // Assign package (dev tool)
+        async function assignPackage(packageName) {
+            if (!currentUser) {
+                showResult('dev-result', '❌ Chưa login!', 'error');
+                return;
+            }
+
+            const result = await apiCall('/api/dev/assign-package', {
+                method: 'POST',
+                body: JSON.stringify({
+                    email: currentUser.email,
+                    package: packageName,
+                    days: 365
+                })
+            });
+            
+            if (result.ok) {
+                currentUser.package = packageName;
+                updateStatus();
+                showResult('dev-result', `✅ Assigned ${packageName}:\n${JSON.stringify(result.data, null, 2)}`, 'success');
+                
+                // Auto refresh package info
+                setTimeout(() => getMyPackage(), 500);
+            } else {
+                showResult('dev-result', `❌ Assign failed:\n${JSON.stringify(result.data, null, 2)}`, 'error');
+            }
+        }
+
+        // Initialize
+        checkServerStatus();
+        updateStatus();
+        
+        // Auto-refresh server status every 30 seconds
+        setInterval(checkServerStatus, 30000);
+    </script>
+</body>
+</html>

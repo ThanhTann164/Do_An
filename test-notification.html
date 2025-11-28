@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Notification API</title>
+</head>
+<body>
+    <h1>Test Notification API</h1>
+    
+    <div>
+        <h3>Test Broadcast</h3>
+        <button onclick="testBroadcast()">Test Broadcast</button>
+    </div>
+    
+    <div>
+        <h3>Test Specific User</h3>
+        <input type="number" id="userId" placeholder="User ID" value="100">
+        <button onclick="testSpecific()">Test Specific</button>
+    </div>
+    
+    <div id="result"></div>
+
+    <script>
+        const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjE4LCJyb2xlIjoiQWRtaW4iLCJpYXQiOjE3MzI3MjE5MzQsImV4cCI6MTczMjgwODMzNH0.example'; // Admin token
+        
+        async function testBroadcast() {
+            try {
+                const response = await fetch('http://localhost:3001/api/notifications/broadcast', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        title: '🧪 Test HTML Form',
+                        message: 'Test từ HTML form - ' + new Date().toLocaleString('vi-VN'),
+                        type: 'system',
+                        sendTo: 'all'
+                    })
+                });
+                
+                const data = await response.json();
+                document.getElementById('result').innerHTML = `
+                    <h4>Broadcast Result:</h4>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                document.getElementById('result').innerHTML = `
+                    <h4>Error:</h4>
+                    <pre>${error.message}</pre>
+                `;
+            }
+        }
+        
+        async function testSpecific() {
+            try {
+                const userId = document.getElementById('userId').value;
+                const response = await fetch('http://localhost:3001/api/notifications/send', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        userId: parseInt(userId),
+                        title: '🎯 Test Specific HTML',
+                        message: 'Test specific user từ HTML - ' + new Date().toLocaleString('vi-VN'),
+                        type: 'custom'
+                    })
+                });
+                
+                const data = await response.json();
+                document.getElementById('result').innerHTML = `
+                    <h4>Specific Result:</h4>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                document.getElementById('result').innerHTML = `
+                    <h4>Error:</h4>
+                    <pre>${error.message}</pre>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
+

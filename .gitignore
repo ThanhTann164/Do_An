@@ -1,0 +1,12 @@
+# Node modules
+node_modules/
+
+# Env files
+*.env
+config.env
+# Allow .env.example for documentation
+!.env.example
+
+# Google credentials (chứa secret, không được commit)
+**/credentials.json
+BE/Config/credentials.json

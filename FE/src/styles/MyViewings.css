@@ -1,0 +1,112 @@
+.my-viewings-page {
+  min-height: calc(100vh - 200px);
+  background: linear-gradient(to bottom, #f8f9fa 0%, #ffffff 100%);
+}
+
+.my-viewings-page h1 {
+  color: #1e293b;
+  font-weight: 700;
+}
+
+.my-viewing-card {
+  border: none;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.my-viewing-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.my-viewing-card .card-title {
+  color: #1e293b;
+  font-weight: 600;
+  font-size: 18px;
+}
+
+.viewing-details {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  padding: 20px;
+  border-radius: 12px;
+  margin-top: 16px;
+}
+
+.detail-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+  color: #475569;
+  font-size: 14px;
+}
+
+.detail-item:last-child {
+  margin-bottom: 0;
+}
+
+.detail-item i {
+  color: #667eea;
+  width: 20px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.detail-item.highlight {
+  background: white;
+  padding: 12px;
+  border-radius: 8px;
+  border-left: 4px solid #667eea;
+  margin-left: -8px;
+  margin-right: -8px;
+}
+
+.detail-item.highlight i {
+  color: #667eea;
+}
+
+.detail-item.highlight span {
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.nav-pills .nav-link {
+  border-radius: 12px;
+  padding: 12px 24px;
+  color: #64748b;
+  font-weight: 500;
+  transition: all 0.2s;
+  border: 2px solid transparent;
+}
+
+.nav-pills .nav-link:hover {
+  background: #f1f5f9;
+  color: #667eea;
+}
+
+.nav-pills .nav-link.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.badge {
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 8px;
+}
+
+.btn {
+  border-radius: 10px;
+  font-weight: 600;
+  padding: 10px 20px;
+  transition: all 0.2s;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+}

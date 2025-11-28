@@ -1,0 +1,200 @@
+/* Profile Page Custom Animations */
+
+/* Background Animation */
+@keyframes bgMove {
+  0% { 
+    background-position: 0% 50%; 
+  }
+  50% { 
+    background-position: 100% 50%; 
+  }
+  100% { 
+    background-position: 0% 50%; 
+  }
+}
+
+/* Fade In Up Animation */
+@keyframes fadeInUp {
+  0% { 
+    opacity: 0; 
+    transform: translateY(30px); 
+  }
+  100% { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+/* Pulse Animation for Avatar */
+@keyframes avatarPulse {
+  0% { 
+    box-shadow: 0 0 0 0 rgba(27, 122, 120, 0.4); 
+  }
+  70% { 
+    box-shadow: 0 0 0 20px rgba(27, 122, 120, 0); 
+  }
+  100% { 
+    box-shadow: 0 0 0 0 rgba(27, 122, 120, 0); 
+  }
+}
+
+/* Floating Animation */
+@keyframes float {
+  0%, 100% { 
+    transform: translateY(0px); 
+  }
+  50% { 
+    transform: translateY(-10px); 
+  }
+}
+
+/* Gradient Text Animation */
+@keyframes gradientShift {
+  0% { 
+    background-position: 0% 50%; 
+  }
+  50% { 
+    background-position: 100% 50%; 
+  }
+  100% { 
+    background-position: 0% 50%; 
+  }
+}
+
+/* Button Glow Animation */
+@keyframes buttonGlow {
+  0% { 
+    box-shadow: 0 4px 15px rgba(15, 95, 92, 0.2); 
+  }
+  50% { 
+    box-shadow: 0 8px 25px rgba(15, 95, 92, 0.4); 
+  }
+  100% { 
+    box-shadow: 0 4px 15px rgba(15, 95, 92, 0.2); 
+  }
+}
+
+/* Card Hover Animation */
+@keyframes cardHover {
+  0% { 
+    transform: translateY(0) scale(1); 
+  }
+  100% { 
+    transform: translateY(-5px) scale(1.02); 
+  }
+}
+
+/* Icon Bounce Animation */
+@keyframes iconBounce {
+  0%, 20%, 50%, 80%, 100% { 
+    transform: translateY(0); 
+  }
+  40% { 
+    transform: translateY(-10px); 
+  }
+  60% { 
+    transform: translateY(-5px); 
+  }
+}
+
+/* Shimmer Effect */
+@keyframes shimmer {
+  0% { 
+    background-position: -200px 0; 
+  }
+  100% { 
+    background-position: calc(200px + 100%) 0; 
+  }
+}
+
+/* Utility Classes */
+.animate-bgMove {
+  animation: bgMove 15s ease-in-out infinite;
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.6s ease forwards;
+}
+
+.animate-avatarPulse {
+  animation: avatarPulse 2s infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-gradientShift {
+  animation: gradientShift 3s ease infinite;
+}
+
+.animate-buttonGlow {
+  animation: buttonGlow 2s ease-in-out infinite;
+}
+
+.animate-cardHover {
+  animation: cardHover 0.3s ease forwards;
+}
+
+.animate-iconBounce {
+  animation: iconBounce 1s ease infinite;
+}
+
+.animate-shimmer {
+  animation: shimmer 2s linear infinite;
+}
+
+/* Hover Effects */
+.hover-lift {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-lift:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+.hover-glow {
+  transition: all 0.3s ease;
+}
+
+.hover-glow:hover {
+  box-shadow: 0 0 30px rgba(15, 95, 92, 0.3);
+}
+
+/* Glass Effect */
+.glass-effect {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.glass-effect-dark {
+  background: rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Responsive Animations */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+  .animate-fadeInUp {
+    animation-duration: 0.4s;
+  }
+  
+  .hover-lift:hover {
+    transform: translateY(-4px) scale(1.01);
+  }
+}
+
+

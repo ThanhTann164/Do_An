@@ -1,0 +1,454 @@
+/* Modern Home Page Animations & Styles */
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Utility Classes */
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+/* Custom Animations */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in-down {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes typewriter {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Animation Classes */
+.animate-fade-in-up {
+  animation: fade-in-up 0.8s ease-out forwards;
+}
+
+.animate-fade-in-up-delay {
+  animation: fade-in-up 0.8s ease-out 0.3s forwards;
+  opacity: 0;
+}
+
+.animate-fade-in-down {
+  animation: fade-in-down 0.6s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.6s ease-out forwards;
+}
+
+.animate-typewriter {
+  overflow: hidden;
+  white-space: nowrap;
+  animation: typewriter 1s steps(20) forwards;
+}
+
+/* Hover Effects */
+.hover\:scale-102:hover {
+  transform: scale(1.02);
+}
+
+.hover\:scale-105:hover {
+  transform: scale(1.05);
+}
+
+.hover\:scale-110:hover {
+  transform: scale(1.1);
+}
+
+/* Glassmorphism Effects */
+.glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.glass-strong {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Custom Shadows */
+.shadow-soft {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.shadow-soft-lg {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+.shadow-3xl {
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+/* Premium Navbar Styles */
+.nav-link-premium {
+  position: relative;
+  overflow: hidden;
+}
+
+.nav-link-premium::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #ffffff, #ffffff/80);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.nav-link-premium:hover::after {
+  width: 100%;
+}
+
+.hover\:scale-103:hover {
+  transform: scale(1.03);
+}
+
+/* Property Card Hover Effects */
+.property-card {
+  transition: all 0.3s ease;
+}
+
+.property-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+/* Button Glow Effect */
+.btn-glow {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-glow::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.btn-glow:hover::before {
+  left: 100%;
+}
+
+/* Responsive Optimizations */
+@media (max-width: 1024px) {
+  .container {
+    max-width: 100%;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .animate-fade-in-up {
+    animation-duration: 0.6s;
+  }
+  
+  .animate-fade-in-up-delay {
+    animation-delay: 0.2s;
+    animation-duration: 0.6s;
+  }
+
+  /* Mobile Navbar */
+  .site-nav {
+    backdrop-filter: blur(8px) !important;
+    border-radius: 0 0 1rem 1rem !important;
+  }
+
+  .container {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  /* Mobile Hero Section */
+  .hero-mobile {
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+
+  .hero-title-mobile {
+    font-size: 2.5rem !important;
+    line-height: 1.2;
+    margin-bottom: 2rem;
+  }
+
+  /* Mobile Search - Responsive Layout */
+  .search-form-mobile {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.5rem;
+    backdrop-filter: blur(8px) !important;
+  }
+
+  .search-form-mobile input {
+    width: 100%;
+    text-align: center;
+    padding: 1rem !important;
+  }
+
+  .search-form-mobile button {
+    width: 100%;
+    justify-content: center;
+    padding: 1rem !important;
+  }
+
+  /* Mobile Advanced Filters */
+  .advanced-filters-mobile {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+    padding: 1.5rem !important;
+  }
+
+  .advanced-filters-mobile input,
+  .advanced-filters-mobile select {
+    padding: 1rem !important;
+  }
+
+  /* Mobile Properties Grid */
+  .properties-mobile {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  /* Mobile Features */
+  .features-mobile {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  /* Mobile Action Buttons */
+  .actions-mobile {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .actions-mobile > * {
+    width: 100%;
+    min-width: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-title-mobile {
+    font-size: 2rem !important;
+  }
+
+  .search-container-mobile {
+    padding: 1rem;
+  }
+
+  .property-card-mobile {
+    margin: 0 0.5rem;
+  }
+}
+
+/* Performance Optimizations */
+.will-change-transform {
+  will-change: transform;
+}
+
+.will-change-opacity {
+  will-change: opacity;
+}
+
+/* Scroll Reveal */
+.scroll-reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.8s ease;
+}
+
+.scroll-reveal.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Custom Theme Colors */
+:root {
+  --primary: #00a693;
+  --primary-dark: #006d5b;
+  --secondary: #00c9b7;
+  --accent: #4fd1c7;
+}
+
+/* Tailwind Custom Classes */
+.text-primary {
+  color: var(--primary);
+}
+
+.bg-primary {
+  background-color: var(--primary);
+}
+
+.bg-primary-dark {
+  background-color: var(--primary-dark);
+}
+
+.border-primary {
+  border-color: var(--primary);
+}
+
+.border-primary\/20 {
+  border-color: rgba(0, 166, 147, 0.2);
+}
+
+.from-primary\/5 {
+  --tw-gradient-from: rgba(0, 166, 147, 0.05);
+}
+
+.to-secondary\/5 {
+  --tw-gradient-to: rgba(0, 201, 183, 0.05);
+}
+
+/* Loading States */
+.loading-shimmer {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Package CTA Animation */
+@keyframes package-float {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-package-float {
+  animation: package-float 0.6s ease-out forwards;
+}
+
+/* Dashboard Icon Hover Effect */
+.dashboard-icon:hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 12px rgba(0, 255, 180, 0.4);
+  background: rgba(255, 255, 255, 0.25) !important;
+}
+
+/* Notification Badge Scale Animation */
+@keyframes scale-pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.animate-scale-pulse {
+  animation: scale-pulse 1.8s ease-in-out infinite;
+}
+
+/* Package CTA Button Hover Effect */
+.package-cta:hover {
+  transform: translateY(-3px) scale(1.03) !important;
+  box-shadow: 0 10px 30px rgba(155, 92, 255, 0.5) !important;
+}
+
+/* Navbar Dropdown Fix */
+.dropdown {
+  z-index: 70 !important;
+  position: absolute !important;
+}
+
+.notification-dropdown {
+  z-index: 70 !important;
+  position: absolute !important;
+}
+
+/* Navbar Container Fix */
+.site-nav {
+  z-index: 60 !important;
+  position: sticky !important;
+  top: 0 !important;
+}
+
+/* User Menu Container */
+#auth-menu {
+  position: relative !important;
+}
+
+/* Ensure parent containers don't clip dropdowns */
+.menu-bg-wrap,
+.site-navigation {
+  overflow: visible !important;
+}
+
+/* Notification Animation */
+.animate-scale-pulse {
+  animation: scale-pulse 1.8s ease-in-out infinite;
+}
+
+/* Glassmorphism for dropdowns */
+.dropdown,
+.notification-dropdown {
+  backdrop-filter: blur(20px) !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}

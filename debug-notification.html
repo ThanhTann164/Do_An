@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Notification API</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        button { margin: 5px; padding: 10px; }
+        .result { background: #f5f5f5; padding: 10px; margin: 10px 0; }
+        .error { background: #ffebee; color: #c62828; }
+        .success { background: #e8f5e8; color: #2e7d32; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Debug Notification API</h1>
+    
+    <div class="section">
+        <h3>1. Test Token</h3>
+        <input type="text" id="token" placeholder="Paste admin token here" style="width: 500px;">
+        <button onclick="testToken()">Test Token</button>
+        <div id="tokenResult" class="result"></div>
+    </div>
+    
+    <div class="section">
+        <h3>2. Test Users API</h3>
+        <button onclick="testUsersAPI()">Test GET /api/notifications/users</button>
+        <div id="usersResult" class="result"></div>
+    </div>
+    
+    <div class="section">
+        <h3>3. Test Broadcast API</h3>
+        <button onclick="testBroadcastAPI()">Test POST /api/notifications/broadcast</button>
+        <div id="broadcastResult" class="result"></div>
+    </div>
+    
+    <div class="section">
+        <h3>4. Test Specific User API</h3>
+        <input type="number" id="testUserId" placeholder="User ID" value="317">
+        <button onclick="testSpecificAPI()">Test POST /api/notifications/send</button>
+        <div id="specificResult" class="result"></div>
+    </div>
+
+    <script>
+        let currentToken = '';
+        
+        function getToken() {
+            const token = document.getElementById('token').value.trim();
+            if (token) {
+                currentToken = token;
+                return token;
+            }
+            
+            // Try to get from localStorage if available
+            try {
+                const localToken = localStorage.getItem('token');
+                if (localToken) {
+                    currentToken = localToken;
+                    document.getElementById('token').value = localToken;
+                    return localToken;
+                }
+            } catch (e) {}
+            
+            alert('Vui lòng nhập token admin');
+            return null;
+        }
+        
+        async function testToken() {
+            const token = getToken();
+            if (!token) return;
+            
+            try {
+                const response = await fetch('http://localhost:3001/api/user', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('tokenResult').innerHTML = `
+                        <div class="success">
+                            ✅ Token hợp lệ!<br>
+                            User: ${data.fullName || data.email}<br>
+                            Role: ${data.role}<br>
+                            ID: ${data.userId}
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('tokenResult').innerHTML = `
+                        <div class="error">❌ Token không hợp lệ: ${data.message}</div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('tokenResult').innerHTML = `
+                    <div class="error">❌ Lỗi kết nối: ${error.message}</div>
+                `;
+            }
+        }
+        
+        async function testUsersAPI() {
+            const token = getToken();
+            if (!token) return;
+            
+            try {
+                const response = await fetch('http://localhost:3001/api/notifications/users', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('usersResult').innerHTML = `
+                        <div class="success">
+                            ✅ API hoạt động! Tìm thấy ${data.data.length} users:<br>
+                            <pre>${JSON.stringify(data.data.slice(0, 3), null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('usersResult').innerHTML = `
+                        <div class="error">❌ API lỗi: ${data.message}</div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('usersResult').innerHTML = `
+                    <div class="error">❌ Lỗi kết nối: ${error.message}</div>
+                `;
+            }
+        }
+        
+        async function testBroadcastAPI() {
+            const token = getToken();
+            if (!token) return;
+            
+            try {
+                const response = await fetch('http://localhost:3001/api/notifications/broadcast', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        title: '🧪 Test từ Debug HTML',
+                        message: 'Test broadcast từ debug form - ' + new Date().toLocaleString('vi-VN'),
+                        type: 'system',
+                        sendTo: 'all'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('broadcastResult').innerHTML = `
+                        <div class="success">
+                            ✅ Broadcast thành công!<br>
+                            Gửi đến: ${data.sentCount} users<br>
+                            Message: ${data.message}
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('broadcastResult').innerHTML = `
+                        <div class="error">❌ Broadcast lỗi: ${data.message}</div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('broadcastResult').innerHTML = `
+                    <div class="error">❌ Lỗi kết nối: ${error.message}</div>
+                `;
+            }
+        }
+        
+        async function testSpecificAPI() {
+            const token = getToken();
+            if (!token) return;
+            
+            const userId = document.getElementById('testUserId').value;
+            if (!userId) {
+                alert('Vui lòng nhập User ID');
+                return;
+            }
+            
+            try {
+                const response = await fetch('http://localhost:3001/api/notifications/send', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        userId: parseInt(userId),
+                        title: '🎯 Test Specific từ Debug',
+                        message: 'Test specific user từ debug form - ' + new Date().toLocaleString('vi-VN'),
+                        type: 'custom'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('specificResult').innerHTML = `
+                        <div class="success">
+                            ✅ Gửi thành công!<br>
+                            User ID: ${userId}<br>
+                            Message: ${data.message}
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('specificResult').innerHTML = `
+                        <div class="error">❌ Gửi lỗi: ${data.message}</div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('specificResult').innerHTML = `
+                    <div class="error">❌ Lỗi kết nối: ${error.message}</div>
+                `;
+            }
+        }
+        
+        // Auto-load token from localStorage if available
+        window.onload = function() {
+            try {
+                const token = localStorage.getItem('token');
+                if (token) {
+                    document.getElementById('token').value = token;
+                }
+            } catch (e) {}
+        };
+    </script>
+</body>
+</html>
+

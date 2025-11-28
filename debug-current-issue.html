@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Current Issue</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .result { background: #f5f5f5; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #e8f5e8; color: #2e7d32; }
+        .error { background: #ffebee; color: #c62828; }
+        button { margin: 5px; padding: 10px 15px; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug Current Issue</h1>
+    
+    <button onclick="checkCurrentToken()">1️⃣ Kiểm tra token hiện tại</button>
+    <button onclick="testUsersAPI()">2️⃣ Test Users API</button>
+    <button onclick="testBroadcastAPI()">3️⃣ Test Broadcast API</button>
+    <button onclick="runAllChecks()">🚀 Kiểm tra tất cả</button>
+    
+    <div id="results"></div>
+
+    <script>
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = message;
+            document.getElementById('results').appendChild(div);
+            console.log(message);
+        }
+        
+        function checkCurrentToken() {
+            log('🔍 Kiểm tra token hiện tại...');
+            
+            const token = localStorage.getItem('token');
+            if (!token) {
+                log('❌ Không có token trong localStorage', 'error');
+                return;
+            }
+            
+            log(`✅ Token tồn tại: ${token.substring(0, 50)}...`, 'success');
+            
+            // Decode JWT để xem thông tin
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                const expiry = new Date(payload.exp * 1000);
+                const now = new Date();
+                
+                log(`📋 Token info:`, 'success');
+                log(`  - User ID: ${payload.userId}`, 'success');
+                log(`  - Role: ${payload.role}`, 'success');
+                log(`  - Email: ${payload.email}`, 'success');
+                log(`  - Expires: ${expiry.toLocaleString('vi-VN')}`, 'success');
+                
+                if (expiry < now) {
+                    log('⚠️ TOKEN ĐÃ HẾT HẠN!', 'error');
+                } else {
+                    log('✅ Token còn hiệu lực', 'success');
+                }
+            } catch (error) {
+                log(`❌ Lỗi decode token: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testUsersAPI() {
+            log('👥 Testing Users API...');
+            
+            const token = localStorage.getItem('token');
+            if (!token) {
+                log('❌ Không có token', 'error');
+                return;
+            }
+            
+            try {
+                log('📡 Calling: GET /api/notifications/users');
+                
+                const response = await fetch('http://localhost:3001/api/notifications/users', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                log(`📡 Response status: ${response.status} ${response.statusText}`);
+                
+                const data = await response.json();
+                log(`📦 Response data: ${JSON.stringify(data, null, 2)}`);
+                
+                if (response.ok && data.success) {
+                    log(`✅ Users API hoạt động! Tìm thấy ${data.data.length} users`, 'success');
+                    log(`📋 3 users đầu: ${data.data.slice(0, 3).map(u => u.name).join(', ')}`, 'success');
+                } else {
+                    log(`❌ Users API lỗi: ${data.message || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Network error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testBroadcastAPI() {
+            log('📢 Testing Broadcast API...');
+            
+            const token = localStorage.getItem('token');
+            if (!token) {
+                log('❌ Không có token', 'error');
+                return;
+            }
+            
+            try {
+                log('📡 Calling: POST /api/notifications/broadcast');
+                
+                const payload = {
+                    title: '🧪 Test Debug',
+                    message: `Test từ debug tool - ${new Date().toLocaleString('vi-VN')}`,
+                    type: 'system',
+                    sendTo: 'all'
+                };
+                
+                log(`📦 Payload: ${JSON.stringify(payload, null, 2)}`);
+                
+                const response = await fetch('http://localhost:3001/api/notifications/broadcast', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                log(`📡 Response status: ${response.status} ${response.statusText}`);
+                
+                const data = await response.json();
+                log(`📦 Response data: ${JSON.stringify(data, null, 2)}`);
+                
+                if (response.ok && data.success) {
+                    log(`✅ Broadcast thành công! Gửi đến ${data.sentCount} users`, 'success');
+                } else {
+                    log(`❌ Broadcast lỗi: ${data.message || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Network error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function runAllChecks() {
+            document.getElementById('results').innerHTML = '';
+            log('🚀 Bắt đầu kiểm tra toàn bộ hệ thống...');
+            
+            checkCurrentToken();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            await testUsersAPI();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            await testBroadcastAPI();
+            
+            log('🎉 Hoàn thành kiểm tra!', 'success');
+        }
+    </script>
+</body>
+</html>
+

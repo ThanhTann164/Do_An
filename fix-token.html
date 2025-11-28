@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fix Token</title>
+</head>
+<body>
+    <h1>🔧 Fix Admin Token</h1>
+    <button onclick="fixToken()" style="padding: 20px; font-size: 18px; background: #007bff; color: white; border: none; border-radius: 5px;">
+        🔑 Click để cập nhật token
+    </button>
+    
+    <div id="result" style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px;"></div>
+    
+    <script>
+        function fixToken() {
+            try {
+                // Cập nhật token mới
+                localStorage.setItem("token", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjE4LCJyb2xlIjoiQWRtaW4iLCJlbWFpbCI6ImFkbWluQHNtYXJ0aG9tZS5jb20iLCJmdWxsTmFtZSI6IlN5c3RlbSBBZG1pbiIsInN0YXR1cyI6IkFjdGl2ZSIsImlhdCI6MTc2NDI1NDgxOCwiZXhwIjoxNzY0MzQxMjE4fQ.oTpm4SK8SIxBzD9YF6n_LB0bG2W5hFgA7ZGhEPLF4CQ");
+                
+                document.getElementById("result").innerHTML = `
+                    <h3 style="color: green;">✅ Token đã được cập nhật thành công!</h3>
+                    <p><strong>Bước tiếp theo:</strong></p>
+                    <ol>
+                        <li>Quay lại trang admin: <a href="http://localhost:3001/admin/notifications/send" target="_blank">http://localhost:3001/admin/notifications/send</a></li>
+                        <li>Nhấn F5 để refresh trang</li>
+                        <li>Dropdown sẽ hiển thị danh sách users</li>
+                    </ol>
+                `;
+                
+                // Tự động chuyển đến trang admin sau 3 giây
+                setTimeout(() => {
+                    window.open('http://localhost:3001/admin/notifications/send', '_blank');
+                }, 3000);
+                
+            } catch (error) {
+                document.getElementById("result").innerHTML = `
+                    <h3 style="color: red;">❌ Lỗi: ${error.message}</h3>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
+
