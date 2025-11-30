@@ -8,7 +8,7 @@ const { isSellerRole, extractRole } = require('../Utils/roleUtils');
 const PACKAGE_FORBIDDEN_MESSAGE = 'Bạn không có quyền sử dụng tính năng package';
 
 // Initialize models
-const { houses, houseimages, users, comments, iotdevices } = initModels(sequelize);
+const { houses, houseimages, users, comments, iotdevices, userpackages, packages } = initModels(sequelize);
 
 // Create a new property post
 const createPost = async (req, res) => {
@@ -231,16 +231,35 @@ const getPosts = async (req, res) => {
             if (priceTo) whereClause.Price[Op.lte] = parseFloat(priceTo);
         }
 
-        // Get posts with pagination
-        const offset = (page - 1) * limit;
-        
-        const posts = await houses.findAndCountAll({
+        // Get posts with pagination - First get all matching posts to sort by package tier
+        const allPosts = await houses.findAll({
             where: whereClause,
             include: [
                 {
                     model: users,
                     as: 'Owner',
-                    attributes: ['UserID', 'FullName', 'Email']
+                    attributes: ['UserID', 'FullName', 'Email'],
+                    include: [
+                        {
+                            model: userpackages,
+                            as: 'userpackages',
+                            where: {
+                                status: 'active',
+                                end_at: { [Op.gt]: new Date() }
+                            },
+                            required: false,
+                            include: [
+                                {
+                                    model: packages,
+                                    as: 'Package',
+                                    attributes: ['name', 'display_name'],
+                                    required: false
+                                }
+                            ],
+                            order: [['end_at', 'DESC']],
+                            limit: 1
+                        }
+                    ]
                 },
                 {
                     model: houseimages,
@@ -248,52 +267,89 @@ const getPosts = async (req, res) => {
                     attributes: ['CloudPath', 'FileName', 'IsCover']
                 }
             ],
-            order: [['createdAt', 'DESC']],
-            limit: parseInt(limit),
-            offset: offset
+            order: [['createdAt', 'DESC']]
         });
 
-        // Format posts for frontend (include both formats for compatibility)
-        const formattedPosts = posts.rows.map(post => ({
-            // Original DB fields (PascalCase) - for backward compatibility
-            HouseID: post.HouseID,
-            Title: post.Title,
-            Description: post.Description,
-            Price: post.Price,
-            HouseType: post.HouseType,
-            Address: post.Address,
-            Status: post.Status,
-            CreatedAt: post.createdAt,
-            OwnerID: post.OwnerID,
-            // Formatted fields (camelCase) - new standard
-            id: post.HouseID,
-            title: post.Title,
-            description: post.Description,
-            price: post.Price,
-            propertyType: post.HouseType,
-            address: post.Address,
-            status: post.Status,
-            createdAt: post.createdAt,
-            sellerId: post.Owner?.UserID || post.OwnerID,
-            seller: {
-                name: post.Owner?.FullName || 'Người bán',
-                email: post.Owner?.Email || '',
-                avatar: post.Owner?.FullName ? post.Owner.FullName.charAt(0).toUpperCase() : 'S'
-            },
-            images: post.houseimages?.map(img => img.CloudPath || img.FileName) || ['/images/img_1.jpg'],
-            likes: 0,
-            comments: 0,
-            isLiked: false
-        }));
+        // Helper function to get package priority (for sorting)
+        const getPackagePriority = (packageName) => {
+            if (!packageName) return 3; // FREE
+            const name = packageName.toUpperCase();
+            if (name === 'PREMIUM') return 1;
+            if (name === 'PRO') return 2;
+            return 3; // FREE
+        };
+
+        // Format and sort posts by package tier (Premium > Pro > Free), then by createdAt
+        const formattedPosts = allPosts
+            .map(post => {
+                // Get active package from owner
+                const activePackage = post.Owner?.userpackages?.[0]?.Package;
+                const packageName = activePackage?.name?.toUpperCase() || 'FREE';
+                const packagePriority = getPackagePriority(packageName);
+
+                return {
+                    // Original DB fields (PascalCase) - for backward compatibility
+                    HouseID: post.HouseID,
+                    Title: post.Title,
+                    Description: post.Description,
+                    Price: post.Price,
+                    HouseType: post.HouseType,
+                    Address: post.Address,
+                    Status: post.Status,
+                    CreatedAt: post.createdAt,
+                    OwnerID: post.OwnerID,
+                    // Formatted fields (camelCase) - new standard
+                    id: post.HouseID,
+                    title: post.Title,
+                    description: post.Description,
+                    price: post.Price,
+                    propertyType: post.HouseType,
+                    address: post.Address,
+                    status: post.Status,
+                    createdAt: post.createdAt,
+                    sellerId: post.Owner?.UserID || post.OwnerID,
+                    seller: {
+                        name: post.Owner?.FullName || 'Người bán',
+                        email: post.Owner?.Email || '',
+                        avatar: post.Owner?.FullName ? post.Owner.FullName.charAt(0).toUpperCase() : 'S'
+                    },
+                    images: post.houseimages?.map(img => img.CloudPath || img.FileName) || ['/images/img_1.jpg'],
+                    likes: 0,
+                    comments: 0,
+                    isLiked: false,
+                    // Package tier information for frontend styling
+                    packageType: packageName,
+                    packagePriority: packagePriority,
+                    _sortKey: packagePriority // Internal sort key
+                };
+            })
+            .sort((a, b) => {
+                // First sort by package priority (Premium > Pro > Free)
+                if (a._sortKey !== b._sortKey) {
+                    return a._sortKey - b._sortKey;
+                }
+                // Then sort by createdAt (newest first)
+                return new Date(b.createdAt) - new Date(a.createdAt);
+            })
+            .map(post => {
+                // Remove internal sort key before sending to frontend
+                const { _sortKey, ...rest } = post;
+                return rest;
+            });
+
+        // Apply pagination after sorting
+        const offset = (page - 1) * limit;
+        const paginatedPosts = formattedPosts.slice(offset, offset + parseInt(limit));
+        const total = formattedPosts.length;
 
         res.json({
             success: true,
             data: {
-                posts: formattedPosts,
-                total: posts.count,
+                posts: paginatedPosts,
+                total: total,
                 page: parseInt(page),
                 limit: parseInt(limit),
-                totalPages: Math.ceil(posts.count / limit)
+                totalPages: Math.ceil(total / limit)
             }
         });
 

@@ -1,44 +1,106 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const OpenAI = require('openai');
 
-// Initialize Google Gemini AI
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
+// Initialize Groq AI (compatible with OpenAI SDK)
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
-console.log('🔑 [AI Controller] GEMINI_API_KEY check:', {
-  hasKey: !!GEMINI_API_KEY,
-  keyLength: GEMINI_API_KEY ? GEMINI_API_KEY.length : 0,
-  keyPrefix: GEMINI_API_KEY ? GEMINI_API_KEY.substring(0, 10) + '...' : 'N/A',
+console.log('🔑 [AI Controller] GROQ_API_KEY check:', {
+  hasKey: !!GROQ_API_KEY,
+  keyLength: GROQ_API_KEY ? GROQ_API_KEY.length : 0,
+  keyPrefix: GROQ_API_KEY ? GROQ_API_KEY.substring(0, 10) + '...' : 'N/A',
   fromEnv: {
-    GEMINI_API_KEY: !!process.env.GEMINI_API_KEY,
-    GOOGLE_AI_API_KEY: !!process.env.GOOGLE_AI_API_KEY
+    GROQ_API_KEY: !!process.env.GROQ_API_KEY
   }
 });
 
-if (!GEMINI_API_KEY) {
-  console.error('❌ [AI Controller] GEMINI_API_KEY or GOOGLE_AI_API_KEY not found in environment variables');
-  console.error('❌ [AI Controller] Available env vars:', Object.keys(process.env).filter(k => k.includes('GEMINI') || k.includes('GOOGLE_AI')));
+if (!GROQ_API_KEY) {
+  console.error('❌ [AI Controller] GROQ_API_KEY not found in environment variables');
+  console.error('❌ [AI Controller] Available env vars:', Object.keys(process.env).filter(k => k.includes('GROQ')));
 }
 
-const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
-const model = genAI ? genAI.getGenerativeModel({ model: 'gemini-1.5-flash' }) : null;
+// Initialize Groq client (using OpenAI SDK, but pointing to Groq API)
+const groq = GROQ_API_KEY ? new OpenAI({
+  apiKey: GROQ_API_KEY,
+  baseURL: 'https://api.groq.com/openai/v1' // Point to Groq API endpoint
+}) : null;
 
-console.log('🤖 [AI Controller] Gemini initialization:', {
-  hasGenAI: !!genAI,
-  hasModel: !!model,
-  modelName: model ? 'gemini-1.5-flash' : 'N/A'
+// Model configuration - Llama 3.3 70B (powerful and fast)
+const GROQ_MODEL = 'llama-3.3-70b-versatile';
+
+console.log('🤖 [AI Controller] Groq initialization:', {
+  hasGroq: !!groq,
+  modelName: GROQ_MODEL,
+  apiKeyConfigured: !!GROQ_API_KEY,
+  baseURL: groq ? 'https://api.groq.com/openai/v1' : 'N/A'
 });
+
+/**
+ * Helper function to clean AI response text
+ * Removes markdown code blocks, backticks, and extra whitespace
+ * @param {string} text - Raw text from AI
+ * @returns {string} - Cleaned text
+ */
+function cleanAIResponse(text) {
+  if (!text || typeof text !== 'string') {
+    return '';
+  }
+  
+  let cleaned = text.trim();
+  
+  // Remove markdown code blocks (```json, ```, etc.)
+  cleaned = cleaned.replace(/```json\n?/gi, '');
+  cleaned = cleaned.replace(/```\n?/g, '');
+  
+  // Remove leading/trailing quotes if wrapped
+  cleaned = cleaned.replace(/^["']|["']$/g, '');
+  
+  // Remove any leading/trailing whitespace
+  cleaned = cleaned.trim();
+  
+  return cleaned;
+}
+
+/**
+ * Helper function to clean JSON response from AI
+ * Removes markdown code blocks, backticks, and extra whitespace/newlines
+ * @param {string} text - Raw text from AI
+ * @returns {string} - Cleaned JSON string
+ */
+function cleanJSON(text) {
+  if (!text || typeof text !== 'string') {
+    return '';
+  }
+  
+  let cleaned = text.trim();
+  
+  // Remove markdown code blocks (```json, ```, etc.) using regex
+  cleaned = cleaned.replace(/```json\s*/gi, '');
+  cleaned = cleaned.replace(/```\s*/g, '');
+  
+  // Remove any leading/trailing whitespace and newlines
+  cleaned = cleaned.replace(/^\s+|\s+$/g, '');
+  cleaned = cleaned.replace(/\n+/g, ' ');
+  
+  // Try to extract JSON object if wrapped in text
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    cleaned = jsonMatch[0];
+  }
+  
+  return cleaned.trim();
+}
 
 class AIController {
   /**
-   * Generate property description using Google Gemini
+   * Generate property description using Groq (Llama 3.3)
    * POST /api/ai/generate-description
    */
   static async generateDescription(req, res) {
     try {
-      // Check if Gemini is configured
-      if (!model) {
+      // Check if Groq is configured
+      if (!groq) {
         return res.status(500).json({
           success: false,
-          message: 'AI service is not configured. Please set GEMINI_API_KEY in environment variables.'
+          message: 'AI service is not configured. Please set GROQ_API_KEY in environment variables.'
         });
       }
 
@@ -82,12 +144,47 @@ Yêu cầu:
 - Ngôn ngữ chuyên nghiệp, hấp dẫn
 - Không sử dụng markdown, chỉ trả về đoạn văn thuần túy`;
 
-      // Call Gemini API
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const description = response.text().trim();
+      // Log input before calling API
+      console.log('🔍 [AI] Groq Input:', {
+        propertyType,
+        location,
+        area,
+        price: priceText,
+        promptLength: prompt.length
+      });
+
+      // Call Groq API with proper error handling
+      console.log('📡 [AI] Calling Groq API with model:', GROQ_MODEL);
+      let completion, description;
+      
+      try {
+        completion = await groq.chat.completions.create({
+          messages: [{ role: 'user', content: prompt }],
+          model: GROQ_MODEL,
+          temperature: 0.7,
+          max_tokens: 500
+        });
+        
+        description = completion.choices[0].message.content;
+      } catch (apiError) {
+        console.error('❌ [AI] Groq API call failed:', apiError.message);
+        console.error('❌ [AI] API Error details:', {
+          status: apiError.status,
+          statusText: apiError.statusText,
+          name: apiError.name
+        });
+        throw apiError; // Re-throw to be caught by outer catch
+      }
+      
+      console.log('📝 [AI] Raw response from Groq:', description);
+      console.log('📝 [AI] Raw response length:', description.length);
+      
+      // Clean the response (remove markdown, extra whitespace)
+      description = cleanAIResponse(description);
 
       console.log('✅ [AI] Description generated successfully');
+      console.log('📝 [AI] Cleaned description length:', description.length);
+      console.log('🔍 [AI] Groq Output:', description.substring(0, 100) + '...');
 
       // Return response
       return res.json({
@@ -96,13 +193,29 @@ Yêu cầu:
       });
 
     } catch (error) {
+      // Comprehensive error logging
       console.error('❌ [AI] Error generating description:', error);
+      console.error('❌ [AI] Error message:', error.message);
+      console.error('❌ [AI] Error name:', error.name);
+      console.error('❌ [AI] Error code:', error.code);
       console.error('❌ [AI] Error stack:', error.stack);
-      console.error('❌ [AI] Error details:', {
-        message: error.message,
-        name: error.name,
-        code: error.code
-      });
+      
+      // Log API-specific errors
+      if (error.status) {
+        console.error('❌ [AI] API Status:', error.status);
+        console.error('❌ [AI] API Status Text:', error.statusText);
+      }
+      
+      // Try to log raw response if available
+      if (error.response) {
+        console.error('❌ [AI] Raw response from Groq:', error.response);
+      }
+      
+      // Log more details for debugging
+      if (error.cause) {
+        console.error('❌ [AI] Error cause:', error.cause);
+      }
+      
       return res.status(500).json({
         success: false,
         message: 'Lỗi khi tạo mô tả. Vui lòng thử lại sau.',
@@ -110,23 +223,24 @@ Yêu cầu:
           message: error.message,
           name: error.name,
           code: error.code,
-          stack: error.stack
+          status: error.status,
+          statusText: error.statusText
         } : undefined
       });
     }
   }
 
   /**
-   * Analyze market using Google Gemini
+   * Analyze market using Groq (Llama 3.3)
    * POST /api/ai/analyze-market
    */
   static async analyzeMarket(req, res) {
     try {
-      // Check if Gemini is configured
-      if (!model) {
+      // Check if Groq is configured
+      if (!groq) {
         return res.status(500).json({
           success: false,
-          message: 'AI service is not configured. Please set GEMINI_API_KEY in environment variables.'
+          message: 'AI service is not configured. Please set GROQ_API_KEY in environment variables.'
         });
       }
 
@@ -167,48 +281,89 @@ QUAN TRỌNG: Trả về kết quả dưới dạng JSON thuần túy (KHÔNG c�
 
 Chỉ trả về JSON, không có text nào khác.`;
 
-      // Call Gemini API
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      let responseText = response.text().trim();
+      // Log input
+      console.log('🔍 [AI] Groq Input:', {
+        propertyType,
+        location,
+        area,
+        price: priceText,
+        promptLength: prompt.length
+      });
 
-      console.log('📝 [AI] Raw response:', responseText);
-
-      // Clean response - remove markdown code blocks if any
-      responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      // Call Groq API with proper error handling
+      console.log('📡 [AI] Calling Groq API with model:', GROQ_MODEL);
+      let completion, responseText;
       
-      // Try to extract JSON if wrapped in text
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        responseText = jsonMatch[0];
+      try {
+        completion = await groq.chat.completions.create({
+          messages: [{ role: 'user', content: prompt }],
+          model: GROQ_MODEL,
+          temperature: 0.7,
+          max_tokens: 800
+        });
+        
+        responseText = completion.choices[0].message.content;
+      } catch (apiError) {
+        console.error('❌ [AI] Groq API call failed:', apiError.message);
+        console.error('❌ [AI] API Error details:', {
+          status: apiError.status,
+          statusText: apiError.statusText,
+          name: apiError.name
+        });
+        throw apiError; // Re-throw to be caught by outer catch
       }
 
-      // Parse JSON
+      console.log('📝 [AI] Raw response from Groq:', responseText);
+      console.log('📝 [AI] Raw response length:', responseText.length);
+
+      // Clean JSON response using helper function
+      const cleanedJSON = cleanJSON(responseText);
+      console.log('🧹 [AI] Cleaned JSON:', cleanedJSON);
+
+      // Parse JSON with detailed error logging
       let analysisResult;
       try {
-        analysisResult = JSON.parse(responseText);
+        analysisResult = JSON.parse(cleanedJSON);
+        console.log('✅ [AI] JSON parsed successfully');
+        console.log('🔍 [AI] Groq Output:', JSON.stringify(analysisResult, null, 2));
       } catch (parseError) {
-        console.error('❌ [AI] JSON parse error:', parseError);
-        console.error('❌ [AI] Response text:', responseText);
-        // Fallback: create a structured response from text
+        console.error('❌ [AI] Failed to parse JSON:', responseText);
+        console.error('❌ [AI] Parse error message:', parseError.message);
+        console.error('❌ [AI] Cleaned JSON text:', cleanedJSON);
+        console.error('❌ [AI] Response text length:', responseText.length);
+        
+        // Return safe fallback object instead of throwing error
         analysisResult = {
-          valuation: 'Hợp lý',
-          pros: ['Vị trí thuận lợi', 'Giá cả phù hợp', 'Tiềm năng phát triển'],
-          cons: ['Cần kiểm tra pháp lý', 'Xem xét giao thông', 'Đánh giá môi trường xung quanh']
+          valuation: 'Chưa xác định',
+          pros: ['Lỗi phân tích dữ liệu'],
+          cons: ['Vui lòng thử lại']
         };
+        console.warn('⚠️ [AI] Using fallback structure due to parse error');
       }
 
       // Validate structure
       if (!analysisResult.valuation || !Array.isArray(analysisResult.pros) || !Array.isArray(analysisResult.cons)) {
         console.warn('⚠️ [AI] Invalid response structure, using fallback');
+        console.warn('⚠️ [AI] Received structure:', {
+          hasValuation: !!analysisResult.valuation,
+          prosIsArray: Array.isArray(analysisResult.pros),
+          consIsArray: Array.isArray(analysisResult.cons),
+          actualStructure: Object.keys(analysisResult)
+        });
+        
         analysisResult = {
-          valuation: analysisResult.valuation || 'Hợp lý',
-          pros: Array.isArray(analysisResult.pros) ? analysisResult.pros : ['Vị trí thuận lợi'],
-          cons: Array.isArray(analysisResult.cons) ? analysisResult.cons : ['Cần kiểm tra thêm']
+          valuation: analysisResult.valuation || 'Chưa xác định',
+          pros: Array.isArray(analysisResult.pros) ? analysisResult.pros : [],
+          cons: Array.isArray(analysisResult.cons) ? analysisResult.cons : []
         };
       }
 
       console.log('✅ [AI] Market analysis completed successfully');
+      console.log('📊 [AI] Analysis result:', {
+        valuation: analysisResult.valuation,
+        prosCount: analysisResult.pros.length,
+        consCount: analysisResult.cons.length
+      });
 
       // Return clean JSON response
       return res.json({
@@ -217,37 +372,60 @@ Chỉ trả về JSON, không có text nào khác.`;
       });
 
     } catch (error) {
+      // Comprehensive error logging
       console.error('❌ [AI] Error analyzing market:', error);
+      console.error('❌ [AI] Error message:', error.message);
+      console.error('❌ [AI] Error name:', error.name);
+      console.error('❌ [AI] Error code:', error.code);
       console.error('❌ [AI] Error stack:', error.stack);
-      console.error('❌ [AI] Error details:', {
-        message: error.message,
-        name: error.name,
-        code: error.code
-      });
-      return res.status(500).json({
-        success: false,
-        message: 'Lỗi khi phân tích thị trường. Vui lòng thử lại sau.',
+      
+      // Log API-specific errors
+      if (error.status) {
+        console.error('❌ [AI] API Status:', error.status);
+        console.error('❌ [AI] API Status Text:', error.statusText);
+      }
+      
+      // Try to log raw response if available
+      if (error.response) {
+        console.error('❌ [AI] Raw response from Groq:', error.response);
+      }
+      
+      // Log more details for debugging
+      if (error.cause) {
+        console.error('❌ [AI] Error cause:', error.cause);
+      }
+      
+      // Return fallback instead of 500 error
+      return res.json({
+        success: true,
+        data: {
+          valuation: 'Chưa xác định',
+          pros: [],
+          cons: []
+        },
+        warning: 'Có lỗi xảy ra khi phân tích. Vui lòng thử lại sau.',
         error: process.env.NODE_ENV === 'development' ? {
           message: error.message,
           name: error.name,
           code: error.code,
-          stack: error.stack
+          status: error.status,
+          statusText: error.statusText
         } : undefined
       });
     }
   }
 
   /**
-   * Optimize title using Google Gemini
+   * Optimize title using Groq (Llama 3.3)
    * POST /api/ai/optimize-title
    */
   static async optimizeTitle(req, res) {
     try {
-      // Check if Gemini is configured
-      if (!model) {
+      // Check if Groq is configured
+      if (!groq) {
         return res.status(500).json({
           success: false,
-          message: 'AI service is not configured. Please set GEMINI_API_KEY in environment variables.'
+          message: 'AI service is not configured. Please set GROQ_API_KEY in environment variables.'
         });
       }
 
@@ -292,13 +470,33 @@ Yêu cầu:
 
 Chỉ trả về tiêu đề đã tối ưu, không có text nào khác.`;
 
-      // Call Gemini API
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      let optimizedTitle = response.text().trim();
+      // Call Groq API with proper error handling
+      console.log('📡 [AI] Calling Groq API with model:', GROQ_MODEL);
+      let completion, optimizedTitle;
+      
+      try {
+        completion = await groq.chat.completions.create({
+          messages: [{ role: 'user', content: prompt }],
+          model: GROQ_MODEL,
+          temperature: 0.8,
+          max_tokens: 150
+        });
+        
+        optimizedTitle = completion.choices[0].message.content;
+      } catch (apiError) {
+        console.error('❌ [AI] Groq API call failed:', apiError.message);
+        console.error('❌ [AI] API Error details:', {
+          status: apiError.status,
+          statusText: apiError.statusText,
+          name: apiError.name
+        });
+        throw apiError; // Re-throw to be caught by outer catch
+      }
 
-      // Clean up response - remove quotes if wrapped
-      optimizedTitle = optimizedTitle.replace(/^["']|["']$/g, '').trim();
+      console.log('📝 [AI] Raw title response from Groq:', optimizedTitle);
+
+      // Clean response using helper function (handles plain text, not JSON)
+      optimizedTitle = cleanAIResponse(optimizedTitle);
 
       // Ensure it's under 100 chars
       if (optimizedTitle.length > 100) {
@@ -306,6 +504,7 @@ Chỉ trả về tiêu đề đã tối ưu, không có text nào khác.`;
       }
 
       console.log('✅ [AI] Title optimized successfully');
+      console.log('📝 [AI] Optimized title length:', optimizedTitle.length);
 
       // Return response
       return res.json({
@@ -317,26 +516,55 @@ Chỉ trả về tiêu đề đã tối ưu, không có text nào khác.`;
       });
 
     } catch (error) {
+      // Comprehensive error logging
       console.error('❌ [AI] Error optimizing title:', error);
+      console.error('❌ [AI] Error message:', error.message);
+      console.error('❌ [AI] Error name:', error.name);
+      console.error('❌ [AI] Error code:', error.code);
+      console.error('❌ [AI] Error stack:', error.stack);
+      
+      // Log API-specific errors
+      if (error.status) {
+        console.error('❌ [AI] API Status:', error.status);
+        console.error('❌ [AI] API Status Text:', error.statusText);
+      }
+      
+      // Try to log raw response if available
+      if (error.response) {
+        console.error('❌ [AI] Raw response from Groq:', error.response);
+      }
+      
+      // Log more details for debugging
+      if (error.cause) {
+        console.error('❌ [AI] Error cause:', error.cause);
+      }
+      
+      // Return user-friendly error message
       return res.status(500).json({
         success: false,
         message: 'Lỗi khi tối ưu tiêu đề. Vui lòng thử lại sau.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: process.env.NODE_ENV === 'development' ? {
+          message: error.message,
+          name: error.name,
+          code: error.code,
+          status: error.status,
+          statusText: error.statusText
+        } : undefined
       });
     }
   }
 
   /**
-   * Optimize description using Google Gemini
+   * Optimize description using Groq (Llama 3.3)
    * POST /api/ai/optimize-description
    */
   static async optimizeDescription(req, res) {
     try {
-      // Check if Gemini is configured
-      if (!model) {
+      // Check if Groq is configured
+      if (!groq) {
         return res.status(500).json({
           success: false,
-          message: 'AI service is not configured. Please set GEMINI_API_KEY in environment variables.'
+          message: 'AI service is not configured. Please set GROQ_API_KEY in environment variables.'
         });
       }
 
@@ -377,12 +605,37 @@ Yêu cầu:
 - Ngôn ngữ tiếng Việt, tự nhiên
 - Không sử dụng markdown, chỉ trả về đoạn văn thuần túy`;
 
-      // Call Gemini API
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const optimizedDescription = response.text().trim();
+      // Call Groq API with proper error handling
+      console.log('📡 [AI] Calling Groq API with model:', GROQ_MODEL);
+      let completion, optimizedDescription;
+      
+      try {
+        completion = await groq.chat.completions.create({
+          messages: [{ role: 'user', content: prompt }],
+          model: GROQ_MODEL,
+          temperature: 0.7,
+          max_tokens: 600
+        });
+        
+        optimizedDescription = completion.choices[0].message.content;
+      } catch (apiError) {
+        console.error('❌ [AI] Groq API call failed:', apiError.message);
+        console.error('❌ [AI] API Error details:', {
+          status: apiError.status,
+          statusText: apiError.statusText,
+          name: apiError.name
+        });
+        throw apiError; // Re-throw to be caught by outer catch
+      }
+
+      console.log('📝 [AI] Raw description response from Groq:', optimizedDescription);
+      console.log('📝 [AI] Raw description length:', optimizedDescription.length);
+
+      // Clean response using helper function (handles plain text, not JSON)
+      optimizedDescription = cleanAIResponse(optimizedDescription);
 
       console.log('✅ [AI] Description optimized successfully');
+      console.log('📝 [AI] Optimized description length:', optimizedDescription.length);
 
       // Return response
       return res.json({
@@ -394,11 +647,40 @@ Yêu cầu:
       });
 
     } catch (error) {
+      // Comprehensive error logging
       console.error('❌ [AI] Error optimizing description:', error);
+      console.error('❌ [AI] Error message:', error.message);
+      console.error('❌ [AI] Error name:', error.name);
+      console.error('❌ [AI] Error code:', error.code);
+      console.error('❌ [AI] Error stack:', error.stack);
+      
+      // Log API-specific errors
+      if (error.status) {
+        console.error('❌ [AI] API Status:', error.status);
+        console.error('❌ [AI] API Status Text:', error.statusText);
+      }
+      
+      // Try to log raw response if available
+      if (error.response) {
+        console.error('❌ [AI] Raw response from Groq:', error.response);
+      }
+      
+      // Log more details for debugging
+      if (error.cause) {
+        console.error('❌ [AI] Error cause:', error.cause);
+      }
+      
+      // Return user-friendly error message
       return res.status(500).json({
         success: false,
         message: 'Lỗi khi tối ưu mô tả. Vui lòng thử lại sau.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: process.env.NODE_ENV === 'development' ? {
+          message: error.message,
+          name: error.name,
+          code: error.code,
+          status: error.status,
+          statusText: error.statusText
+        } : undefined
       });
     }
   }
