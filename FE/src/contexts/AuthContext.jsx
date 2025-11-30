@@ -401,8 +401,13 @@ export const AuthProvider = ({ children }) => {
 
         const updatedUser = applyUserState(userData);
         
-        // Note: fetchMyPackage sẽ được gọi sau khi component mount hoặc từ useEffect khác
-        // Không gọi trực tiếp ở đây để tránh circular dependency
+        // Nếu là Seller và có currentPackage, trigger fetch package details
+        if (isSellerRole(getUserRole(updatedUser)) && updatedUser?.currentPackage) {
+          // Fetch package details ngay sau khi có user info
+          setTimeout(() => {
+            fetchMyPackage({ targetUser: updatedUser, silentOnMissingToken: true });
+          }, 100);
+        }
         
         return updatedUser;
       }
