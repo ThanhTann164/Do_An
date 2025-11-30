@@ -27,6 +27,7 @@ var _packages = require("./packages");
 var _userpackages = require("./userpackages");
 var _notifications = require("./notifications");
 var _payment_transactions = require("./payment_transactions");
+var _aicache = require("./aicache");
 
 function initModels(sequelize) {
   var appointments = _appointments(sequelize, DataTypes);
@@ -57,6 +58,7 @@ function initModels(sequelize) {
   var userpackages = _userpackages(sequelize, DataTypes);
   var notifications = _notifications(sequelize, DataTypes);
   var payment_transactions = _payment_transactions(sequelize, DataTypes);
+  var aicache = _aicache(sequelize, DataTypes);
 
   appointments.belongsTo(users, { as: "Buyer", foreignKey: "BuyerID"});
   users.hasMany(appointments, { as: "buyer_appointments", foreignKey: "BuyerID"});
@@ -159,6 +161,7 @@ function initModels(sequelize) {
   return {
     appointments,
     auditlogs,
+    aicache,
     biometricdata,
     comments,
     commissions,

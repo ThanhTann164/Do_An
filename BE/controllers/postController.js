@@ -105,6 +105,10 @@ const createPost = async (req, res) => {
             });
         }
 
+        // Get tierLevel from existing userPackage (already fetched above)
+        const tierLevel = userPackage?.name === 'PREMIUM' ? 3 : 
+                         userPackage?.name === 'PRO' ? 2 : 1;
+
         // Create the house record (mặc định chờ duyệt)
         const house = await houses.create({
             OwnerID: userId,
@@ -113,7 +117,12 @@ const createPost = async (req, res) => {
             Price: parseFloat(price),
             HouseType: propertyType,
             Address: `${address}, ${ward}, ${district}, ${city}`,
-            Status: 'Pending'
+            Status: 'Pending',
+            // TASK 4: Set tierLevel when creating post
+            TierLevel: tierLevel,
+            PriorityScore: tierLevel, // Same as tierLevel for now
+            IsBoosted: false, // Default to false, can be boosted later
+            BoostExpiresAt: null
         });
 
         console.log('✅ [createPost] House created:', house.HouseID);
@@ -279,13 +288,21 @@ const getPosts = async (req, res) => {
             return 3; // FREE
         };
 
-        // Format and sort posts by package tier (Premium > Pro > Free), then by createdAt
+        // TASK 4: Fix Weighted Sorting - Boost first, then Premium > Pro > Free
         const formattedPosts = allPosts
             .map(post => {
                 // Get active package from owner
                 const activePackage = post.Owner?.userpackages?.[0]?.Package;
                 const packageName = activePackage?.name?.toUpperCase() || 'FREE';
                 const packagePriority = getPackagePriority(packageName);
+                
+                // Check if post is boosted (from database or calculated)
+                const isBoosted = post.IsBoosted && 
+                                  post.BoostExpiresAt && 
+                                  new Date(post.BoostExpiresAt) > new Date();
+                
+                // Get tierLevel from database or calculate from package
+                const tierLevel = post.TierLevel || packagePriority;
 
                 return {
                     // Original DB fields (PascalCase) - for backward compatibility
@@ -320,20 +337,33 @@ const getPosts = async (req, res) => {
                     // Package tier information for frontend styling
                     packageType: packageName,
                     packagePriority: packagePriority,
-                    _sortKey: packagePriority // Internal sort key
+                    // TASK 4: Add boost and tier information
+                    isBoosted: isBoosted,
+                    boostExpiresAt: post.BoostExpiresAt,
+                    tierLevel: tierLevel,
+                    // Internal sort keys: isBoosted (0=true, 1=false), then tierLevel (3=Premium, 2=Pro, 1=Free)
+                    _sortBoost: isBoosted ? 0 : 1, // 0 = boosted (first), 1 = not boosted
+                    _sortTier: tierLevel // 3 = Premium, 2 = Pro, 1 = Free
                 };
             })
             .sort((a, b) => {
-                // First sort by package priority (Premium > Pro > Free)
-                if (a._sortKey !== b._sortKey) {
-                    return a._sortKey - b._sortKey;
+                // TASK 4: Weighted Sort Algorithm
+                // 1st Priority: Boost (isBoosted = true lên đầu)
+                if (a._sortBoost !== b._sortBoost) {
+                    return a._sortBoost - b._sortBoost; // 0 (boosted) < 1 (not boosted)
                 }
-                // Then sort by createdAt (newest first)
+                
+                // 2nd Priority: Tier Level (Premium=3 > Pro=2 > Free=1)
+                if (a._sortTier !== b._sortTier) {
+                    return b._sortTier - a._sortTier; // Higher tier first (3 > 2 > 1)
+                }
+                
+                // 3rd Priority: Created At (newest first)
                 return new Date(b.createdAt) - new Date(a.createdAt);
             })
             .map(post => {
-                // Remove internal sort key before sending to frontend
-                const { _sortKey, ...rest } = post;
+                // Remove internal sort keys before sending to frontend
+                const { _sortBoost, _sortTier, ...rest } = post;
                 return rest;
             });
 

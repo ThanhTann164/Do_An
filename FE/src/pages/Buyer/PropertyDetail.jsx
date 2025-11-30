@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Layout from '../../components/Layout';
 import ChatBox from '../../components/ChatBox';
-import IoTDevicesSection from '../../components/IoTDevicesSection';
 import dayjs from 'dayjs';
+import { motion } from 'framer-motion';
 import { 
   Lightbulb, 
   Lock, 
@@ -13,7 +13,18 @@ import {
   Snowflake, 
   Shield, 
   Smartphone,
-  Home
+  Home,
+  Heart,
+  Calendar,
+  MessageCircle,
+  MapPin,
+  Bed,
+  Bath,
+  Square,
+  CheckCircle,
+  Phone,
+  Mail,
+  User
 } from 'lucide-react';
 import '../../styles/property-detail.css';
 
@@ -31,6 +42,10 @@ export default function PropertyDetail() {
   const [currentUser, setCurrentUser] = useState(null);
   const [isFavorited, setIsFavorited] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
+  const [quickContactName, setQuickContactName] = useState('');
+  const [quickContactPhone, setQuickContactPhone] = useState('');
+  const [quickContactMessage, setQuickContactMessage] = useState('');
+  const [quickContactSubmitting, setQuickContactSubmitting] = useState(false);
 
   useEffect(() => {
     loadPropertyDetail();
@@ -68,20 +83,10 @@ export default function PropertyDetail() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('🔍 [PropertyDetail] Full API Response:', data);
-        
         const propertyData = data.data || data;
-        console.log('🔍 [PropertyDetail] Property Data:', propertyData);
-        console.log('🔍 [PropertyDetail] IoT Devices in Property:', propertyData.iotDevices);
-        console.log('🔍 [PropertyDetail] IoT Devices Type:', typeof propertyData.iotDevices);
-        console.log('🔍 [PropertyDetail] IoT Devices Length:', propertyData.iotDevices?.length);
-        
         setProperty(propertyData);
         setImages(propertyData.houseimages || []);
-        
-        // Set IoT devices from property data with debug
         const devices = propertyData.iotDevices || [];
-        console.log('🔍 [PropertyDetail] Setting IoT Devices:', devices);
         setIotDevices(devices);
       }
     } catch (error) {
@@ -90,7 +95,6 @@ export default function PropertyDetail() {
       setLoading(false);
     }
   };
-
 
   const loadFavoriteStatus = async () => {
     try {
@@ -108,14 +112,12 @@ export default function PropertyDetail() {
         const data = await response.json();
         setIsFavorited(data.isFavorited || false);
       } else {
-        // Fallback to localStorage for demo
         const favoriteKey = `favorite_${id}_${token.slice(0, 10)}`;
         const isFavorited = localStorage.getItem(favoriteKey) === 'true';
         setIsFavorited(isFavorited);
       }
     } catch (error) {
       console.error('Error loading favorite status:', error);
-      // Fallback to localStorage for demo
       const token = localStorage.getItem('token') || document.cookie.split('token=')[1]?.split(';')[0];
       if (token) {
         const favoriteKey = `favorite_${id}_${token.slice(0, 10)}`;
@@ -149,14 +151,11 @@ export default function PropertyDetail() {
       if (response.ok) {
         const data = await response.json();
         setIsFavorited(data.isFavorited);
-        
-        // Show success message
         const message = data.isFavorited ? 'Đã thêm vào yêu thích!' : 'Đã bỏ khỏi yêu thích!';
         setTimeout(() => {
           alert(message);
         }, 100);
       } else {
-        // Fallback to localStorage for demo
         const favoriteKey = `favorite_${id}_${token.slice(0, 10)}`;
         const newFavoriteStatus = !isFavorited;
         
@@ -167,7 +166,6 @@ export default function PropertyDetail() {
         }
         
         setIsFavorited(newFavoriteStatus);
-        
         const message = newFavoriteStatus ? 'Đã thêm vào yêu thích!' : 'Đã bỏ khỏi yêu thích!';
         setTimeout(() => {
           alert(message);
@@ -175,8 +173,6 @@ export default function PropertyDetail() {
       }
     } catch (error) {
       console.error('Error toggling favorite:', error);
-      
-      // Fallback to localStorage for demo
       const favoriteKey = `favorite_${id}_${token.slice(0, 10)}`;
       const newFavoriteStatus = !isFavorited;
       
@@ -187,7 +183,6 @@ export default function PropertyDetail() {
       }
       
       setIsFavorited(newFavoriteStatus);
-      
       const message = newFavoriteStatus ? 'Đã thêm vào yêu thích!' : 'Đã bỏ khỏi yêu thích!';
       setTimeout(() => {
         alert(message);
@@ -262,7 +257,7 @@ export default function PropertyDetail() {
     };
     
     const IconComponent = iconMap[deviceType] || Home;
-    return <IconComponent className="w-8 h-8 text-[#009879]" />;
+    return <IconComponent className="w-6 h-6 text-emerald-600" />;
   };
 
   const maskEmail = (email) => {
@@ -317,10 +312,56 @@ export default function PropertyDetail() {
     }).format(price);
   };
 
+  const handleQuickContact = async (e) => {
+    e.preventDefault();
+    if (!quickContactName || !quickContactPhone || !quickContactMessage) {
+      alert('Vui lòng điền đầy đủ thông tin');
+      return;
+    }
+
+    const token = localStorage.getItem('token') || document.cookie.split('token=')[1]?.split(';')[0];
+    if (!token) {
+      alert('Vui lòng đăng nhập để gửi tin nhắn');
+      window.location.href = '/login';
+      return;
+    }
+
+    setQuickContactSubmitting(true);
+    try {
+      // Trigger chat with initial message
+      setShowChat(true);
+      setQuickContactName('');
+      setQuickContactPhone('');
+      setQuickContactMessage('');
+      alert('Đang mở hộp thoại chat với người bán...');
+    } catch (error) {
+      console.error('Error sending quick contact:', error);
+      alert('Có lỗi xảy ra. Vui lòng thử lại.');
+    } finally {
+      setQuickContactSubmitting(false);
+    }
+  };
+
+  // Animation variants
+  const fadeInUp = {
+    hidden: { opacity: 0, y: 30 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } }
+  };
+
+  const slideInLeft = {
+    hidden: { opacity: 0, x: -30 },
+    visible: { opacity: 1, x: 0, transition: { duration: 0.6, ease: 'easeOut' } }
+  };
+
+  const scaleIn = {
+    hidden: { opacity: 0, scale: 0.9 },
+    visible: { opacity: 1, scale: 1, transition: { duration: 0.5, ease: 'easeOut' } }
+  };
+
   if (loading) {
     return (
       <Layout>
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-white">
+        <div className="min-h-screen flex items-center justify-center bg-white">
           <div className="text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-full mb-4 animate-spin">
               <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -337,14 +378,14 @@ export default function PropertyDetail() {
   if (!property) {
     return (
       <Layout>
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-white">
+        <div className="min-h-screen flex items-center justify-center bg-white">
           <div className="text-center max-w-md mx-auto px-6">
             <div className="text-6xl text-gray-300 mb-6">🏠</div>
             <h2 className="text-2xl font-bold text-gray-800 mb-4">Không tìm thấy thông tin nhà</h2>
             <p className="text-gray-600 mb-8">Có thể nhà này đã được gỡ bỏ hoặc không tồn tại.</p>
             <Link 
               to="/properties" 
-              className="btn-premium btn-premium-primary inline-flex items-center"
+              className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg font-semibold hover:from-emerald-600 hover:to-teal-700 transition-all"
             >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -362,476 +403,459 @@ export default function PropertyDetail() {
 
   return (
     <Layout>
-      {/* Hero Section - Compact */}
-      <div className="bg-gradient-to-br from-emerald-50 to-teal-50 py-16">
+      {/* Header Section - Clean & Minimal */}
+      <div className="bg-white border-b border-gray-100 py-6">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center animate-fadeInUp">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">Chi tiết bất động sản</h1>
-            <nav className="flex justify-center items-center space-x-2 text-sm text-gray-600">
-              <Link to="/" className="hover:text-emerald-600 transition-colors">Trang chủ</Link>
-              <span>/</span>
-              <Link to="/properties" className="hover:text-emerald-600 transition-colors">Danh sách nhà</Link>
-              <span>/</span>
-              <span className="text-emerald-600">Chi tiết</span>
-            </nav>
-          </div>
+          <nav className="flex items-center space-x-2 text-sm text-gray-600">
+            <Link to="/" className="hover:text-emerald-600 transition-colors">Trang chủ</Link>
+            <span>/</span>
+            <Link to="/properties" className="hover:text-emerald-600 transition-colors">Danh sách nhà</Link>
+            <span>/</span>
+            <span className="text-emerald-600">Chi tiết</span>
+          </nav>
         </div>
       </div>
 
-      {/* Main Content - Premium 2 Column Layout */}
-      <div className="relative bg-gradient-to-br from-gray-50 to-white py-16 overflow-hidden">
-        {/* Global Decorative Elements */}
-        <div className="decorative-orb decorative-orb-1"></div>
-        <div className="decorative-orb decorative-orb-2"></div>
-        
-        <div className="max-w-7xl mx-auto px-6 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
-            
-            {/* Left Column - Image Gallery */}
-            <div className="animate-fadeInUp animate-delay-100">
-              <div className="property-image-gallery">
-                <img 
-                  src={mainImageUrl} 
-                  alt="Property Main" 
-                  className="main-property-image"
-                  onError={(e) => {
-                    e.target.src = '/images/img_1.jpg';
-                  }}
-                />
-              </div>
-
-              {images.length > 1 && (
-                <div className="thumbnail-grid animate-fadeInUp animate-delay-200">
-                  {images.slice(0, 4).map((img, index) => (
-                    <img
-                      key={index}
-                      src={getDriveViewUrl(img) || '/images/img_1.jpg'}
-                      alt={`Thumbnail ${index + 1}`}
-                      className={`property-thumbnail ${index === currentImageIndex ? 'active' : ''}`}
-                      onClick={() => setCurrentImageIndex(index)}
-                      onError={(e) => {
-                        e.target.src = '/images/img_1.jpg';
-                      }}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Right Column - Property Info */}
-            <div className="animate-slideInRight animate-delay-200">
-              {/* Property Title & Price */}
-              <div className="mb-8">
-                <h1 className="property-title">{property.Title || 'Nhà đẹp'}</h1>
-                <p className="text-lg text-gray-600 mb-4 flex items-center">
-                  <svg className="w-5 h-5 mr-2 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  {property.Address}
-                </p>
-                <div className="property-price">{formatPrice(property.Price)}</div>
-                
-                {/* Status Badge */}
-                <span className={`status-badge ${property.Status === 'Available' ? 'available' : 'sold'}`}>
-                  {property.Status === 'Available' ? 'Có sẵn' : 'Đã bán'}
-                </span>
-              </div>
-
-              {/* Property Features - Glassmorphism */}
-              <div className="glass-card p-6 mb-8 animate-fadeInUp animate-delay-300">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="property-info-item">
-                    <div className="property-info-icon bg-blue-100 text-blue-600">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2V7zm0 0V5a2 2 0 012-2h6l2 2h6a2 2 0 012 2v2M7 13h10" />
-                      </svg>
-                    </div>
-                    <div>
-                      <div className="text-sm text-gray-600">Phòng ngủ</div>
-                      <div className="font-semibold text-gray-900">{property.Bedrooms || 0}</div>
-                    </div>
-                  </div>
-
-                  <div className="property-info-item">
-                    <div className="property-info-icon bg-emerald-100 text-emerald-600">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <div className="text-sm text-gray-600">Phòng tắm</div>
-                      <div className="font-semibold text-gray-900">{property.Bathrooms || 0}</div>
-                    </div>
-                  </div>
-
-                  <div className="property-info-item">
-                    <div className="property-info-icon bg-purple-100 text-purple-600">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                      </svg>
-                    </div>
-                    <div>
-                      <div className="text-sm text-gray-600">Diện tích</div>
-                      <div className="font-semibold text-gray-900">{property.Area || 0} m²</div>
-                    </div>
-                  </div>
-
-                  <div className="property-info-item">
-                    <div className="property-info-icon bg-orange-100 text-orange-600">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <div className="text-sm text-gray-600">Trạng thái</div>
-                      <div className="font-semibold text-gray-900">{property.Status}</div>
+      {/* Main Content - Premium Split Hero Layout */}
+      <div className="bg-[#f8f9fa] min-h-screen">
+        <div className="max-w-7xl mx-auto px-6 py-12">
+          
+          {/* Split Hero Section - Image (Left) + Summary Card (Right) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-12">
+            {/* LEFT COLUMN - Hero Image (8 columns on desktop) */}
+            <motion.div 
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6 }}
+              className="lg:col-span-8"
+            >
+              <div className="rounded-2xl overflow-hidden shadow-2xl">
+                <div className="relative aspect-[16/10] lg:aspect-[3/2]">
+                  <img 
+                    src={mainImageUrl} 
+                    alt="Property Main" 
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.src = '/images/img_1.jpg';
+                    }}
+                  />
+                  {/* Price Tag - Top Right Corner */}
+                  <div className="absolute top-4 right-4 bg-black/70 backdrop-blur-sm rounded-xl px-5 py-3 shadow-2xl border border-white/20">
+                    <div className="text-2xl lg:text-3xl font-bold text-white">
+                      {formatPrice(property.Price)}
                     </div>
                   </div>
                 </div>
+                {images.length > 1 && (
+                  <div className="grid grid-cols-4 gap-3 p-4 bg-white/95 backdrop-blur-sm">
+                    {images.slice(0, 4).map((img, index) => (
+                      <motion.img
+                        key={index}
+                        src={getDriveViewUrl(img) || '/images/img_1.jpg'}
+                        alt={`Thumbnail ${index + 1}`}
+                        className={`w-full h-20 object-cover rounded-xl cursor-pointer transition-all ${
+                          index === currentImageIndex 
+                            ? 'ring-4 ring-emerald-500 scale-105 shadow-lg' 
+                            : 'opacity-70 hover:opacity-100 hover:scale-105'
+                        }`}
+                        onClick={() => setCurrentImageIndex(index)}
+                        onError={(e) => {
+                          e.target.src = '/images/img_1.jpg';
+                        }}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
+            </motion.div>
 
-              {/* Description */}
-              {property.Description && (
-                <div className="mb-8 animate-fadeInUp animate-delay-400">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Mô tả</h3>
-                  <p className="text-gray-600 leading-relaxed">{property.Description}</p>
-                </div>
-              )}
-
-              {/* Compact Action Buttons - Modern SaaS Style */}
-              <div className="relative animate-fadeInUp animate-delay-400">
-                {/* Decorative Background Elements */}
-                <div className="absolute -top-8 -right-8 w-32 h-32 bg-gradient-to-br from-cyan-200/20 to-purple-200/20 rounded-full blur-3xl opacity-30"></div>
-                <div className="absolute -bottom-4 -left-4 w-20 h-20 bg-gradient-to-tr from-emerald-200/25 to-teal-200/25 rounded-full blur-2xl opacity-40"></div>
-                
-                <div className="relative bg-gradient-to-br from-white/80 to-gray-50/60 backdrop-blur-lg rounded-3xl p-6 shadow-lg border border-white/40 hover:shadow-xl transition-all duration-300">
-                  {/* Header Section */}
-                  <div className="text-center mb-4">
-                    <h3 className="text-xl font-semibold text-gray-800 mb-1">Hành động</h3>
-                    <div className="w-12 h-px bg-gradient-to-r from-emerald-400 to-teal-400 mx-auto mb-2"></div>
-                    <p className="text-sm font-medium text-gray-600">Chọn thao tác bạn muốn thực hiện</p>
-                    {/* Debug info */}
-                    <p className="text-xs text-gray-400 mt-2">
-                      User: {currentUser ? 'Logged in' : 'Not logged in'} | 
-                      Property: {property ? 'Loaded' : 'Not loaded'}
-                    </p>
+            {/* RIGHT COLUMN - Summary Card (4 columns on desktop, sticky) */}
+            <motion.div 
+              initial={{ opacity: 0, x: 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="lg:col-span-4"
+            >
+              <div className="lg:sticky lg:top-24">
+                <div className="bg-white rounded-2xl p-6 shadow-xl border border-gray-100">
+                  {/* Status Badge - Top */}
+                  <div className="mb-4">
+                    <span className={`inline-block px-4 py-2 rounded-full text-sm font-semibold ${
+                      property.Status === 'Available' 
+                        ? 'bg-emerald-100 text-emerald-700' 
+                        : 'bg-gray-100 text-gray-700'
+                    }`}>
+                      {property.Status === 'Available' ? 'Có sẵn' : 'Đã bán'}
+                    </span>
                   </div>
 
+                  {/* Title - Two Lines: Prefix + Property Name */}
+                  <div className="mb-3">
+                    {/* Line 1: Prefix */}
+                    <div className="text-sm lg:text-base font-semibold text-emerald-600 mb-2">
+                      💎 Nhà phố Premium
+                    </div>
+                    {/* Line 2: Property Name - Wraps correctly */}
+                    <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 leading-tight break-words" style={{ fontFamily: 'Georgia, serif' }}>
+                      {property.Title || 'Nhà đẹp'}
+                    </h1>
+                  </div>
+
+                  {/* Address */}
+                  <div className="flex items-start text-gray-600 mb-6">
+                    <MapPin className="w-5 h-5 mr-2 text-emerald-600 mt-0.5 flex-shrink-0" />
+                    <span className="text-sm lg:text-base break-words">{property.Address}</span>
+                  </div>
+
+                  {/* Action Buttons - Stacked Vertically */}
                   <div className="space-y-3">
-                    {/* Compact Two Column Layout */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <button 
-                        className="compact-action-btn group bg-gradient-to-br from-emerald-50 to-emerald-100/50 border border-emerald-200/50 hover:from-emerald-100 hover:to-emerald-200/60"
-                        style={{ 
-                          padding: '0.875rem 1rem', 
-                          borderRadius: '1.125rem', 
-                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                          cursor: 'pointer',
-                          display: 'block'
-                        }}
-                        onClick={() => {
-                          if (!currentUser) {
-                            alert('Vui lòng đăng nhập để đặt lịch xem nhà');
-                            window.location.href = '/login';
-                            return;
-                          }
-                          setShowViewingModal(true);
-                        }}
-                      >
-                        <div className="flex items-center space-x-2">
-                          <div className="w-8 h-8 bg-emerald-500/10 rounded-xl flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
-                            <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                          </div>
-                          <span className="text-sm font-semibold text-emerald-700">Đặt lịch xem</span>
-                        </div>
-                      </button>
-
-                      <button 
-                        className="compact-action-btn group bg-gradient-to-br from-blue-50 to-blue-100/50 border border-blue-200/50 hover:from-blue-100 hover:to-blue-200/60"
-                        style={{ 
-                          padding: '0.875rem 1rem', 
-                          borderRadius: '1.125rem', 
-                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                          cursor: 'pointer',
-                          display: 'block'
-                        }}
-                        onClick={() => {
-                          if (!currentUser) {
-                            alert('Vui lòng đăng nhập để liên hệ người bán');
-                            window.location.href = '/login';
-                            return;
-                          }
-                          if (currentUser && property && currentUser.userId === property.OwnerID) {
-                            alert('Bạn không thể liên hệ với chính mình');
-                            return;
-                          }
-                          setShowChat(true);
-                        }}
-                      >
-                        <div className="flex items-center space-x-2">
-                          <div className="w-8 h-8 bg-blue-500/10 rounded-xl flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
-                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                            </svg>
-                          </div>
-                          <span className="text-sm font-semibold text-blue-700">Liên hệ người bán</span>
-                        </div>
-                      </button>
-                    </div>
-
-                    {/* Compact Favorite Button */}
-                    <button 
-                      className={`compact-action-btn w-full group transition-all duration-300 ${
-                        isFavorited 
-                          ? 'bg-gradient-to-br from-red-50 to-pink-50 border border-red-200/60 hover:from-red-100 hover:to-pink-100' 
-                          : 'bg-gradient-to-br from-gray-50 to-gray-100/50 border border-gray-200/60 hover:from-red-50 hover:to-pink-50 hover:border-red-200/60'
-                      } ${favoriteLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      style={{ 
-                        padding: '0.875rem 1rem', 
-                        borderRadius: '1.125rem', 
-                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                        cursor: favoriteLoading ? 'not-allowed' : 'pointer',
-                        display: 'block',
-                        width: '100%'
+                    <button
+                      onClick={() => {
+                        if (!currentUser) {
+                          alert('Vui lòng đăng nhập để đặt lịch xem nhà');
+                          window.location.href = '/login';
+                          return;
+                        }
+                        setShowViewingModal(true);
                       }}
+                      className="w-full group flex items-center justify-center space-x-3 px-6 py-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl font-semibold hover:from-emerald-600 hover:to-teal-700 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1"
+                    >
+                      <Calendar className="w-5 h-5" />
+                      <span>Đặt lịch xem</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        if (!currentUser) {
+                          alert('Vui lòng đăng nhập để liên hệ người bán');
+                          window.location.href = '/login';
+                          return;
+                        }
+                        if (currentUser && property && currentUser.userId === property.OwnerID) {
+                          alert('Bạn không thể liên hệ với chính mình');
+                          return;
+                        }
+                        setShowChat(true);
+                      }}
+                      className="w-full group flex items-center justify-center space-x-3 px-6 py-4 bg-white border-2 border-emerald-500 text-emerald-600 rounded-xl font-semibold hover:bg-emerald-50 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+                    >
+                      <MessageCircle className="w-5 h-5" />
+                      <span>Liên hệ người bán</span>
+                    </button>
+
+                    <button
                       onClick={toggleFavorite}
                       disabled={favoriteLoading}
+                      className={`w-full group flex items-center justify-center space-x-3 px-6 py-4 rounded-xl font-semibold transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
+                        isFavorited
+                          ? 'bg-red-50 border-2 border-red-300 text-red-600 hover:bg-red-100'
+                          : 'bg-gray-50 border-2 border-gray-200 text-gray-700 hover:bg-gray-100'
+                      } ${favoriteLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                      <div className="flex items-center justify-center space-x-2">
-                        {favoriteLoading ? (
-                          <svg className="w-4 h-4 animate-spin text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                          </svg>
-                        ) : (
-                          <span className={`text-lg ${isFavorited ? 'animate-heartbeat' : ''}`}>
-                            {isFavorited ? '❤️' : '🤍'}
-                          </span>
-                        )}
-                        <span className={`text-sm font-semibold ${isFavorited ? 'text-red-600' : 'text-gray-700'}`}>
-                          {isFavorited ? 'Đã yêu thích' : 'Thêm vào yêu thích'}
-                        </span>
-                      </div>
+                      {favoriteLoading ? (
+                        <svg className="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                      ) : (
+                        <Heart className={`w-5 h-5 ${isFavorited ? 'fill-current' : ''}`} />
+                      )}
+                      <span>{isFavorited ? 'Đã yêu thích' : 'Thêm vào yêu thích'}</span>
                     </button>
                   </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
-        </div>
-      </div>
 
-      {/* Detailed Information Section */}
-      <div className="relative bg-white py-16 hover-lift">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="animate-fadeInUp">
-            <h2 className="section-title">Thông tin chi tiết</h2>
-            
-            <div className="glass-card p-8 mb-12">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-6">
-                  <div className="flex items-center">
-                    <div className="property-info-icon bg-red-100 text-red-600 mr-4">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      </svg>
+          {/* Quick Stats - Enhanced */}
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12"
+          >
+            {[
+              { icon: Bed, value: property.Bedrooms || 0, label: 'Phòng ngủ' },
+              { icon: Bath, value: property.Bathrooms || 0, label: 'Phòng tắm' },
+              { icon: Square, value: property.Area || 0, label: 'm²' },
+              { icon: CheckCircle, value: property.Status, label: 'Trạng thái' }
+            ].map((stat, index) => (
+              <motion.div
+                key={index}
+                className="bg-white rounded-2xl p-6 text-center shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 border border-gray-100"
+                whileHover={{ scale: 1.05 }}
+              >
+                <stat.icon className="w-8 h-8 text-emerald-600 mx-auto mb-3" />
+                <div className="text-2xl font-bold text-gray-900 mb-1">{stat.value}</div>
+                <div className="text-sm text-gray-600">{stat.label}</div>
+              </motion.div>
+            ))}
+          </motion.div>
+
+          {/* 2-Column Grid Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-[65%_35%] gap-8">
+            {/* Left Column - Main Content */}
+            <div className="space-y-8">
+              {/* Description */}
+              {property.Description && (
+                <motion.div 
+                  variants={fadeInUp}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true, margin: "-100px" }}
+                  className="bg-white rounded-2xl p-8 shadow-2xl border border-gray-100 hover:shadow-3xl transition-shadow duration-300"
+                >
+                  <h2 className="text-3xl font-bold text-gray-900 mb-6" style={{ fontFamily: 'Georgia, serif' }}>
+                    Mô tả
+                  </h2>
+                  <p className="text-gray-600 leading-relaxed whitespace-pre-line text-lg">{property.Description}</p>
+                </motion.div>
+              )}
+
+              {/* Detailed Information Card */}
+              <motion.div 
+                variants={fadeInUp}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: "-100px" }}
+                className="bg-white rounded-2xl p-8 shadow-2xl border border-gray-100 hover:shadow-3xl transition-all duration-300 hover:border-emerald-200"
+              >
+                  <h2 className="text-3xl font-bold text-gray-900 mb-6" style={{ fontFamily: 'Georgia, serif' }}>
+                    Thông tin chi tiết
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-5">
+                      {[
+                        { icon: MapPin, label: 'Địa chỉ', value: property.Address },
+                        { icon: Home, label: 'Loại nhà', value: property.HouseType || 'Chưa cập nhật' },
+                        { icon: null, label: 'Hướng nhà', value: property.Orientation || 'Chưa cập nhật', customIcon: true }
+                      ].map((item, idx) => (
+                        <motion.div 
+                          key={idx}
+                          className="flex items-start group"
+                          whileHover={{ x: 5 }}
+                        >
+                          <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center mr-4 flex-shrink-0 group-hover:bg-emerald-200 transition-colors">
+                            {item.customIcon ? (
+                              <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                              </svg>
+                            ) : (
+                              <item.icon className="w-6 h-6 text-emerald-600" />
+                            )}
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-600 mb-1">{item.label}</div>
+                            <div className="font-semibold text-gray-900">{item.value}</div>
+                          </div>
+                        </motion.div>
+                      ))}
                     </div>
-                    <div>
-                      <div className="text-sm text-gray-600">Địa chỉ</div>
-                      <div className="font-semibold text-gray-900">{property.Address}</div>
+                    <div className="space-y-5">
+                      {[
+                        { icon: User, label: 'Người đăng', value: property.Owner?.FullName || property.user?.FullName || property.user?.fullName || 'Chưa cập nhật' },
+                        { icon: Mail, label: 'Email', value: maskEmail(property.Owner?.Email || property.user?.Email || property.user?.email) },
+                        { icon: Calendar, label: 'Ngày đăng', value: dayjs(property.CreatedAt).format('DD/MM/YYYY') }
+                      ].map((item, idx) => (
+                        <motion.div 
+                          key={idx}
+                          className="flex items-start group"
+                          whileHover={{ x: 5 }}
+                        >
+                          <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center mr-4 flex-shrink-0 group-hover:bg-emerald-200 transition-colors">
+                            <item.icon className="w-6 h-6 text-emerald-600" />
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-600 mb-1">{item.label}</div>
+                            <div className="font-semibold text-gray-900">{item.value}</div>
+                          </div>
+                        </motion.div>
+                      ))}
                     </div>
                   </div>
+                </motion.div>
 
-                  <div className="flex items-center">
-                    <div className="property-info-icon bg-indigo-100 text-indigo-600 mr-4">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                      </svg>
+              {/* IoT Devices Section */}
+              <motion.div 
+                variants={scaleIn}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: "-100px" }}
+                className="bg-white rounded-2xl p-8 shadow-2xl border border-gray-100 hover:shadow-3xl transition-all duration-300 hover:border-emerald-200"
+              >
+                  <div className="flex items-center mb-6">
+                    <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center mr-4 shadow-lg">
+                      <Home className="w-7 h-7 text-white" />
                     </div>
-                    <div>
-                      <div className="text-sm text-gray-600">Loại nhà</div>
-                      <div className="font-semibold text-gray-900">{property.HouseType || 'Chưa cập nhật'}</div>
-                    </div>
+                    <h2 className="text-3xl font-bold text-gray-900" style={{ fontFamily: 'Georgia, serif' }}>
+                      Thiết bị IoT
+                    </h2>
                   </div>
-
-                  <div className="flex items-center">
-                    <div className="property-info-icon bg-green-100 text-green-600 mr-4">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                      </svg>
-                    </div>
-                    <div>
-                      <div className="text-sm text-gray-600">Hướng nhà</div>
-                      <div className="font-semibold text-gray-900">{property.Orientation || 'Chưa cập nhật'}</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  <div className="flex items-center">
-                    <div className="property-info-icon bg-yellow-100 text-yellow-600 mr-4">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <div className="text-sm text-gray-600">Người đăng</div>
-                      <div className="font-semibold text-gray-900">{property.Owner?.FullName || property.user?.FullName || property.user?.fullName || 'Chưa cập nhật'}</div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center">
-                    <div className="property-info-icon bg-pink-100 text-pink-600 mr-4">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <div className="text-sm text-gray-600">Email</div>
-                      <div className="font-semibold text-gray-900">{maskEmail(property.Owner?.Email || property.user?.Email || property.user?.email)}</div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center">
-                    <div className="property-info-icon bg-teal-100 text-teal-600 mr-4">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <div className="text-sm text-gray-600">Ngày đăng</div>
-                      <div className="font-semibold text-gray-900">{dayjs(property.CreatedAt).format('DD/MM/YYYY')}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* IoT Devices Section - DIRECT RENDER */}
-            <div className="animate-fadeInUp animate-delay-250" style={{ backgroundColor: 'lightgreen', padding: '20px', margin: '20px 0' }}>
-              <h2 className="section-title" style={{ color: 'darkgreen', fontSize: '28px' }}>🏠 Thiết bị IoT trong căn nhà</h2>
-              
-              {iotDevices && iotDevices.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-                  {iotDevices.map((device, index) => (
-                    <div 
-                      key={device.DeviceID || index} 
-                      className="iot-device-card animate-fadeInUp"
-                      style={{ 
-                        animationDelay: `${index * 100}ms`,
-                        padding: '24px',
-                        borderRadius: '16px',
-                        backgroundColor: 'white',
-                        border: '2px solid #009879',
-                        boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
-                      }}
-                    >
-                      <div className="flex flex-col items-center text-center">
-                        <div className="mb-4" style={{ fontSize: '48px' }}>
-                          {getDeviceIcon(device.DeviceType)}
-                        </div>
-                        <div>
+                  
+                  {iotDevices && iotDevices.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {iotDevices.map((device, index) => (
+                        <motion.div 
+                          key={device.DeviceID || index}
+                          className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-2xl p-6 text-center hover:shadow-xl transition-all duration-300 hover:-translate-y-2 hover:border-emerald-300"
+                          whileHover={{ scale: 1.05 }}
+                          initial={{ opacity: 0, y: 20 }}
+                          whileInView={{ opacity: 1, y: 0 }}
+                          viewport={{ once: true }}
+                          transition={{ delay: index * 0.1 }}
+                        >
+                          <div className="mb-4 flex justify-center">
+                            <div className="w-16 h-16 bg-emerald-100 rounded-2xl flex items-center justify-center">
+                              {getDeviceIcon(device.DeviceType)}
+                            </div>
+                          </div>
                           <h3 className="font-semibold text-gray-900 mb-1 text-lg">
                             {device.DeviceName || 'Thiết bị IoT'}
                           </h3>
-                          <p className="text-sm text-gray-600 mb-2">
+                          <p className="text-sm text-gray-600 mb-3">
                             {device.DeviceType || 'Unknown'}
                           </p>
                           {device.Status && (
-                            <span className={`inline-block px-3 py-1 text-xs rounded-full ${
+                            <span className={`inline-block px-3 py-1 text-xs rounded-full font-semibold ${
                               device.Status === 'Active' 
-                                ? 'bg-green-100 text-green-700' 
+                                ? 'bg-emerald-100 text-emerald-700' 
                                 : 'bg-gray-100 text-gray-700'
                             }`}>
                               {device.Status}
                             </span>
                           )}
-                        </div>
-                      </div>
+                        </motion.div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="glass-card text-center mb-12" style={{ padding: '24px', borderRadius: '16px', backgroundColor: 'lightyellow' }}>
-                  <div className="mb-4 opacity-50">
-                    <Home className="w-16 h-16 mx-auto text-gray-400" />
-                  </div>
-                  <p className="text-gray-600 text-lg mb-2">Nhà này chưa có thiết bị IoT nào được kích hoạt</p>
-                  <p className="text-gray-500 text-sm">Liên hệ chủ nhà để biết thêm thông tin về các thiết bị thông minh</p>
-                </div>
-              )}
+                  ) : (
+                    <div className="text-center py-12">
+                      <Home className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+                      <p className="text-gray-600 text-lg mb-2">Nhà này chưa có thiết bị IoT nào được kích hoạt</p>
+                      <p className="text-gray-500 text-sm">Liên hệ chủ nhà để biết thêm thông tin về các thiết bị thông minh</p>
+                    </div>
+                  )}
+                </motion.div>
             </div>
 
-            {/* Seller Information Card */}
-            {(property.Owner || property.user) && (
-              <div className="animate-fadeInUp animate-delay-200">
-                <h2 className="section-title">Thông tin Seller</h2>
-                
-                <div className="seller-card">
-                  <div className="flex items-center justify-between flex-wrap gap-6">
-                    <div className="flex items-center">
-                      <div className="seller-avatar">
+            {/* Right Column - Sticky Sidebar */}
+            <div className="lg:sticky lg:top-6 h-fit space-y-6">
+              {/* Seller Information Card */}
+              {(property.Owner || property.user) && (
+                <motion.div 
+                  variants={slideInLeft}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true, margin: "-100px" }}
+                  className="bg-white rounded-2xl p-6 shadow-2xl border border-gray-100 hover:shadow-3xl transition-all duration-300"
+                >
+                    <h2 className="text-2xl font-bold text-gray-900 mb-6" style={{ fontFamily: 'Georgia, serif' }}>
+                      Thông tin Seller
+                    </h2>
+                    <div className="flex flex-col items-center mb-6">
+                      <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center text-white text-3xl font-bold mb-4 shadow-xl">
                         {((property.Owner?.FullName || property.user?.FullName || property.user?.fullName || 'S')[0]).toUpperCase()}
                       </div>
-                      <div>
-                        <h3 className="text-xl font-bold text-gray-900 mb-1">
-                          {property.Owner?.FullName || property.user?.FullName || property.user?.fullName || 'Chưa cập nhật'}
-                        </h3>
-                        <div className="space-y-2">
-                          <div className="flex items-center text-gray-600">
-                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                            </svg>
-                            {maskEmail(property.Owner?.Email || property.user?.Email || property.user?.email)}
-                          </div>
-                          <div className="flex items-center text-gray-600">
-                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                            </svg>
-                            {maskPhone(property.Owner?.PhoneNumber || property.user?.PhoneNumber || property.user?.phone)}
-                          </div>
-                          <div className="flex items-center">
-                            <span className="px-3 py-1 text-xs font-medium bg-emerald-100 text-emerald-700 rounded-full">
-                              {property.Owner?.Role || property.user?.Role || property.user?.role || 'Seller'}
-                            </span>
-                          </div>
+                      <h3 className="text-xl font-bold text-gray-900 mb-3 text-center">
+                        {property.Owner?.FullName || property.user?.FullName || property.user?.fullName || 'Chưa cập nhật'}
+                      </h3>
+                      <div className="space-y-3 w-full">
+                        <div className="flex items-center text-gray-600 bg-gray-50 rounded-xl p-3">
+                          <Mail className="w-4 h-4 mr-2 text-emerald-600" />
+                          <span className="text-sm">{maskEmail(property.Owner?.Email || property.user?.Email || property.user?.email)}</span>
+                        </div>
+                        <div className="flex items-center text-gray-600 bg-gray-50 rounded-xl p-3">
+                          <Phone className="w-4 h-4 mr-2 text-emerald-600" />
+                          <span className="text-sm">{maskPhone(property.Owner?.PhoneNumber || property.user?.PhoneNumber || property.user?.phone)}</span>
+                        </div>
+                        <div className="flex justify-center">
+                          <span className="px-4 py-2 text-xs font-medium bg-emerald-100 text-emerald-700 rounded-full">
+                            {property.Owner?.Role || property.user?.Role || property.user?.role || 'Seller'}
+                          </span>
                         </div>
                       </div>
                     </div>
                     
-                    <div>
-                      <Link 
-                        to={`/seller/${property.OwnerID}/properties`}
-                        className="btn-premium btn-premium-outline flex items-center justify-center"
-                      >
-                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                        </svg>
-                        Xem nhà khác
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+                    <Link 
+                      to={`/seller/${property.OwnerID}/properties`}
+                      className="w-full inline-flex items-center justify-center px-6 py-3 bg-white border-2 border-emerald-500 text-emerald-600 rounded-xl font-semibold hover:bg-emerald-50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
+                    >
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+                      Xem nhà khác
+                    </Link>
+                  </motion.div>
+              )}
 
+              {/* Quick Contact Form */}
+              <motion.div 
+                variants={slideInLeft}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: "-100px" }}
+                className="bg-white rounded-2xl p-6 shadow-2xl border border-gray-100 hover:shadow-3xl transition-all duration-300"
+              >
+                  <h2 className="text-2xl font-bold text-gray-900 mb-6" style={{ fontFamily: 'Georgia, serif' }}>
+                    Liên hệ nhanh
+                  </h2>
+                  <form onSubmit={handleQuickContact} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Tên của bạn</label>
+                      <input
+                        type="text"
+                        value={quickContactName}
+                        onChange={(e) => setQuickContactName(e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                        placeholder="Nhập tên của bạn"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Số điện thoại</label>
+                      <input
+                        type="tel"
+                        value={quickContactPhone}
+                        onChange={(e) => setQuickContactPhone(e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                        placeholder="Nhập số điện thoại"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Tin nhắn</label>
+                      <textarea
+                        value={quickContactMessage}
+                        onChange={(e) => setQuickContactMessage(e.target.value)}
+                        rows={4}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all resize-none"
+                        placeholder="Nhập tin nhắn của bạn..."
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={quickContactSubmitting}
+                      className="w-full px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl font-semibold hover:from-emerald-600 hover:to-teal-700 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {quickContactSubmitting ? 'Đang gửi...' : 'Gửi tin nhắn'}
+                    </button>
+                  </form>
+                </motion.div>
+            </div>
           </div>
+
         </div>
       </div>
 
-      {/* Ultra Modern Glassmorphism Modal */}
+      {/* Viewing Modal */}
       {showViewingModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-modalFadeIn">
-          <div className="w-full max-w-md bg-white/55 backdrop-filter backdrop-blur-[18px] border border-white/25 rounded-[28px] shadow-2xl animate-modalSlideIn">
-            {/* Compact Header */}
-            <div className="p-6 pb-4">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-[22px] font-semibold text-gray-900">Đặt lịch xem nhà</h2>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900">Đặt lịch xem nhà</h2>
                 <button 
                   type="button" 
-                  className="p-2 hover:bg-black/5 rounded-full transition-colors"
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                   onClick={() => setShowViewingModal(false)}
                 >
                   <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -839,66 +863,51 @@ export default function PropertyDetail() {
                   </svg>
                 </button>
               </div>
-              <p className="text-sm text-gray-600">Chọn thời gian phù hợp với bạn</p>
+              <p className="text-sm text-gray-600 mt-2">Chọn thời gian phù hợp với bạn</p>
             </div>
             
-            <div className="px-6 pb-6">
+            <div className="p-6">
               <form onSubmit={handleScheduleViewing} className="space-y-4">
-                {/* Compact Input Group */}
-                <div className="space-y-4">
-                  <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Ngày xem nhà</label>
-                    <div className="relative">
-                      <input
-                        type="date"
-                        className="w-full px-4 py-3 bg-white/60 border border-black/8 rounded-[14px] focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-400 transition-all duration-300 text-gray-900 placeholder-gray-500"
-                        value={viewingDate}
-                        onChange={(e) => setViewingDate(e.target.value)}
-                        min={new Date().toISOString().split('T')[0]}
-                        required
-                      />
-                      <svg className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 opacity-40 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                  </div>
-                  
-                  <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Giờ xem nhà</label>
-                    <div className="relative">
-                      <input
-                        type="time"
-                        className="w-full px-4 py-3 bg-white/60 border border-black/8 rounded-[14px] focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-400 transition-all duration-300 text-gray-900"
-                        value={viewingTime}
-                        onChange={(e) => setViewingTime(e.target.value)}
-                        required
-                      />
-                      <svg className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 opacity-40 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Ngày xem nhà</label>
+                  <input
+                    type="date"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    value={viewingDate}
+                    onChange={(e) => setViewingDate(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                    required
+                  />
                 </div>
                 
-                {/* Compact Note */}
-                <div className="bg-blue-50/80 backdrop-blur-sm border border-blue-200/50 rounded-[12px] p-4 text-center">
-                  <p className="text-sm text-blue-800 font-medium">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Giờ xem nhà</label>
+                  <input
+                    type="time"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    value={viewingTime}
+                    onChange={(e) => setViewingTime(e.target.value)}
+                    required
+                  />
+                </div>
+                
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-sm text-blue-800">
                     Seller sẽ xác nhận lịch hẹn của bạn trong thời gian sớm nhất
                   </p>
                 </div>
                 
-                {/* Action Buttons */}
                 <div className="flex space-x-3 pt-2">
                   <button 
                     type="button" 
-                    className="flex-1 px-4 py-3 bg-gray-100/80 border border-gray-200/50 text-gray-700 rounded-[14px] font-semibold hover:bg-gray-200/80 transition-all duration-300 hover:scale-[1.02]"
+                    className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 transition-all"
                     onClick={() => setShowViewingModal(false)}
                   >
                     Hủy
                   </button>
                   <button 
                     type="submit" 
-                    className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-[14px] font-semibold hover:from-emerald-600 hover:to-teal-700 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg"
+                    className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg font-semibold hover:from-emerald-600 hover:to-teal-700 transition-all hover:shadow-lg"
                   >
                     Xác nhận đặt lịch
                   </button>

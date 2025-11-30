@@ -1,4 +1,11 @@
 const OpenAI = require('openai');
+const crypto = require('crypto');
+const getSequelizeInstance = require('../utils/sequelize-instance');
+const sequelize = getSequelizeInstance();
+const { initModels } = require('../models/init-models');
+
+// Initialize models
+const { aicache } = initModels(sequelize);
 
 // Initialize Groq AI (compatible with OpenAI SDK)
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
@@ -60,6 +67,78 @@ function cleanAIResponse(text) {
 }
 
 /**
+ * Helper function to generate cache key and hash from input data
+ * @param {Object} inputData - Input data for AI (propertyType, location, etc.)
+ * @param {string} resultType - Type of AI result (description, market_analysis, etc.)
+ * @returns {Object} - { cacheKey, inputHash }
+ */
+function generateCacheKey(inputData, resultType) {
+  // Create a normalized string from input data
+  const normalizedData = JSON.stringify(inputData, Object.keys(inputData).sort());
+  const cacheKey = `${resultType}:${normalizedData}`;
+  
+  // Generate SHA256 hash
+  const inputHash = crypto.createHash('sha256').update(cacheKey).digest('hex');
+  
+  return { cacheKey, inputHash };
+}
+
+/**
+ * Helper function to check cache and return cached result if exists
+ * @param {string} inputHash - Hash of input data
+ * @returns {Object|null} - Cached result or null
+ */
+async function getCachedResult(inputHash) {
+  try {
+    const cached = await aicache.findOne({
+      where: {
+        InputHash: inputHash,
+        ExpiresAt: {
+          [require('sequelize').Op.gt]: new Date()
+        }
+      }
+    });
+    
+    if (cached) {
+      console.log('💾 [AI Cache] Serving from cache');
+      return JSON.parse(cached.Result);
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('❌ [AI Cache] Error checking cache:', error);
+    return null; // Return null on error, continue with API call
+  }
+}
+
+/**
+ * Helper function to save result to cache
+ * @param {string} inputHash - Hash of input data
+ * @param {string} cacheKey - Human-readable cache key
+ * @param {Object} result - Result to cache
+ * @param {string} resultType - Type of AI result
+ */
+async function saveToCache(inputHash, cacheKey, result, resultType) {
+  try {
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); // Expires after 7 days
+    
+    await aicache.upsert({
+      InputHash: inputHash,
+      CacheKey: cacheKey.substring(0, 255), // Truncate if too long
+      Result: JSON.stringify(result),
+      ResultType: resultType,
+      ExpiresAt: expiresAt
+    });
+    
+    console.log('💾 [AI Cache] Saved to cache');
+  } catch (error) {
+    console.error('❌ [AI Cache] Error saving to cache:', error);
+    // Don't throw error, just log - cache failure shouldn't break the API
+  }
+}
+
+/**
  * Helper function to clean JSON response from AI
  * Removes markdown code blocks, backticks, and extra whitespace/newlines
  * @param {string} text - Raw text from AI
@@ -116,6 +195,19 @@ class AIController {
       }
 
       console.log('🤖 [AI] Generating description for:', { propertyType, location, area, price });
+
+      // TASK 2: AI Caching - Check cache first
+      const inputData = { propertyType, location, features, area, price };
+      const { cacheKey, inputHash } = generateCacheKey(inputData, 'description');
+      
+      const cachedResult = await getCachedResult(inputHash);
+      if (cachedResult) {
+        return res.json({
+          success: true,
+          description: cachedResult.description || cachedResult,
+          fromCache: true
+        });
+      }
 
       // Format features array to string
       const featuresText = Array.isArray(features) && features.length > 0
@@ -186,14 +278,18 @@ Yêu cầu:
       console.log('📝 [AI] Cleaned description length:', description.length);
       console.log('🔍 [AI] Groq Output:', description.substring(0, 100) + '...');
 
+      // TASK 2: AI Caching - Save to cache
+      await saveToCache(inputHash, cacheKey, { description }, 'description');
+
       // Return response
       return res.json({
         success: true,
-        description: description
+        description: description,
+        fromCache: false
       });
 
     } catch (error) {
-      // Comprehensive error logging
+      // TASK 5: Robust Error Handling - Comprehensive error logging
       console.error('❌ [AI] Error generating description:', error);
       console.error('❌ [AI] Error message:', error.message);
       console.error('❌ [AI] Error name:', error.name);
@@ -216,16 +312,38 @@ Yêu cầu:
         console.error('❌ [AI] Error cause:', error.cause);
       }
       
-      return res.status(500).json({
-        success: false,
-        message: 'Lỗi khi tạo mô tả. Vui lòng thử lại sau.',
-        error: process.env.NODE_ENV === 'development' ? {
-          message: error.message,
-          name: error.name,
-          code: error.code,
-          status: error.status,
-          statusText: error.statusText
-        } : undefined
+      // TASK 5: Return fallback response instead of 500 error
+      // Get input data for fallback
+      const { propertyType, location, features, area, price } = req.body || {};
+      
+      // Format price for fallback
+      const priceText = price 
+        ? price >= 1000000000 
+          ? `${(price / 1000000000).toFixed(1)} tỷ VND`
+          : `${(price / 1000000).toFixed(0)} triệu VND`
+        : 'liên hệ';
+      
+      // Format features
+      const featuresText = Array.isArray(features) && features.length > 0
+        ? features.join(', ')
+        : 'đầy đủ tiện ích';
+      
+      // Generate fallback description
+      const fallbackDescription = `Căn ${propertyType || 'bất động sản'} tuyệt đẹp tại ${location || 'vị trí đắc địa'}, ` +
+        `${area ? `diện tích ${area}m², ` : ''}` +
+        `giá ${priceText}. ` +
+        `Vị trí thuận lợi, ${featuresText}, tiềm năng đầu tư cao. ` +
+        `Liên hệ ngay để được tư vấn chi tiết!`;
+      
+      console.log('⚠️ [AI] Using fallback description due to API error');
+      
+      // Return 200 with fallback (not 500) to prevent frontend crash
+      return res.json({
+        success: true,
+        description: fallbackDescription,
+        isFallback: true, // Flag to indicate this is a fallback response
+        fromCache: false,
+        warning: 'AI service tạm thời không khả dụng. Đã sử dụng mô tả mặc định.'
       });
     }
   }
@@ -256,6 +374,19 @@ Yêu cầu:
       }
 
       console.log('📊 [AI] Analyzing market for:', { propertyType, location, area, price });
+
+      // TASK 2: AI Caching - Check cache first
+      const inputData = { location, price, area, propertyType };
+      const { cacheKey, inputHash } = generateCacheKey(inputData, 'market_analysis');
+      
+      const cachedResult = await getCachedResult(inputHash);
+      if (cachedResult) {
+        return res.json({
+          success: true,
+          data: cachedResult,
+          fromCache: true
+        });
+      }
 
       // Format price
       const priceText = price 
@@ -365,14 +496,18 @@ Chỉ trả về JSON, không có text nào khác.`;
         consCount: analysisResult.cons.length
       });
 
+      // TASK 2: AI Caching - Save to cache
+      await saveToCache(inputHash, cacheKey, analysisResult, 'market_analysis');
+
       // Return clean JSON response
       return res.json({
         success: true,
-        data: analysisResult
+        data: analysisResult,
+        fromCache: false
       });
 
     } catch (error) {
-      // Comprehensive error logging
+      // TASK 5: Robust Error Handling - Comprehensive error logging
       console.error('❌ [AI] Error analyzing market:', error);
       console.error('❌ [AI] Error message:', error.message);
       console.error('❌ [AI] Error name:', error.name);
@@ -395,22 +530,40 @@ Chỉ trả về JSON, không có text nào khác.`;
         console.error('❌ [AI] Error cause:', error.cause);
       }
       
-      // Return fallback instead of 500 error
+      // TASK 5: Return fallback instead of 500 error
+      // Get input data for fallback
+      const { location, price, area, propertyType } = req.body || {};
+      
+      // Format price for fallback
+      const priceText = price 
+        ? price >= 1000000000 
+          ? `${(price / 1000000000).toFixed(1)} tỷ VND`
+          : `${(price / 1000000).toFixed(0)} triệu VND`
+        : 'chưa xác định';
+      
+      // Generate fallback analysis
+      const fallbackAnalysis = {
+        valuation: 'Hợp lý',
+        pros: [
+          `Vị trí ${location || 'thuận lợi'}`,
+          `${propertyType || 'Bất động sản'} có tiềm năng`,
+          'Giá cả phù hợp thị trường'
+        ],
+        cons: [
+          'Cần kiểm tra thực tế',
+          'Nên tham khảo thêm ý kiến chuyên gia'
+        ]
+      };
+      
+      console.log('⚠️ [AI] Using fallback analysis due to API error');
+      
+      // Return 200 with fallback (not 500) to prevent frontend crash
       return res.json({
         success: true,
-        data: {
-          valuation: 'Chưa xác định',
-          pros: [],
-          cons: []
-        },
-        warning: 'Có lỗi xảy ra khi phân tích. Vui lòng thử lại sau.',
-        error: process.env.NODE_ENV === 'development' ? {
-          message: error.message,
-          name: error.name,
-          code: error.code,
-          status: error.status,
-          statusText: error.statusText
-        } : undefined
+        data: fallbackAnalysis,
+        isFallback: true, // Flag to indicate this is a fallback response
+        fromCache: false,
+        warning: 'AI service tạm thời không khả dụng. Đã sử dụng phân tích mặc định.'
       });
     }
   }
@@ -516,7 +669,7 @@ Chỉ trả về tiêu đề đã tối ưu, không có text nào khác.`;
       });
 
     } catch (error) {
-      // Comprehensive error logging
+      // TASK 5: Robust Error Handling - Comprehensive error logging
       console.error('❌ [AI] Error optimizing title:', error);
       console.error('❌ [AI] Error message:', error.message);
       console.error('❌ [AI] Error name:', error.name);
@@ -534,22 +687,41 @@ Chỉ trả về tiêu đề đã tối ưu, không có text nào khác.`;
         console.error('❌ [AI] Raw response from Groq:', error.response);
       }
       
+      // TASK 5: Return fallback response instead of 500 error
+      const { title, house_type, location, price } = req.body || {};
+      
+      // Generate fallback optimized title
+      let fallbackTitle = title || 'Bất động sản';
+      if (house_type) fallbackTitle = `${house_type} ${fallbackTitle}`;
+      if (location) fallbackTitle += ` tại ${location}`;
+      if (price) {
+        const priceText = price >= 1000000000 
+          ? `${(price / 1000000000).toFixed(1)} tỷ`
+          : `${(price / 1000000).toFixed(0)} triệu`;
+        fallbackTitle += ` - ${priceText} VND`;
+      }
+      
+      // Ensure it's under 100 chars
+      if (fallbackTitle.length > 100) {
+        fallbackTitle = fallbackTitle.substring(0, 97) + '...';
+      }
+      
+      console.log('⚠️ [AI] Using fallback title due to API error');
+      
       // Log more details for debugging
       if (error.cause) {
         console.error('❌ [AI] Error cause:', error.cause);
       }
       
-      // Return user-friendly error message
-      return res.status(500).json({
-        success: false,
-        message: 'Lỗi khi tối ưu tiêu đề. Vui lòng thử lại sau.',
-        error: process.env.NODE_ENV === 'development' ? {
-          message: error.message,
-          name: error.name,
-          code: error.code,
-          status: error.status,
-          statusText: error.statusText
-        } : undefined
+      // Return 200 with fallback (not 500) to prevent frontend crash
+      return res.json({
+        success: true,
+        data: {
+          optimized_title: fallbackTitle,
+          original_title: title || 'N/A'
+        },
+        isFallback: true,
+        warning: 'AI service tạm thời không khả dụng. Đã sử dụng tiêu đề mặc định.'
       });
     }
   }
@@ -647,7 +819,7 @@ Yêu cầu:
       });
 
     } catch (error) {
-      // Comprehensive error logging
+      // TASK 5: Robust Error Handling - Comprehensive error logging
       console.error('❌ [AI] Error optimizing description:', error);
       console.error('❌ [AI] Error message:', error.message);
       console.error('❌ [AI] Error name:', error.name);
@@ -670,17 +842,39 @@ Yêu cầu:
         console.error('❌ [AI] Error cause:', error.cause);
       }
       
-      // Return user-friendly error message
-      return res.status(500).json({
-        success: false,
-        message: 'Lỗi khi tối ưu mô tả. Vui lòng thử lại sau.',
-        error: process.env.NODE_ENV === 'development' ? {
-          message: error.message,
-          name: error.name,
-          code: error.code,
-          status: error.status,
-          statusText: error.statusText
-        } : undefined
+      // TASK 5: Return fallback response instead of 500 error
+      const { raw_description, house_type, location, price, bedrooms, bathrooms } = req.body || {};
+      
+      // Format price for fallback
+      const priceText = price 
+        ? price >= 1000000000 
+          ? `${(price / 1000000000).toFixed(1)} tỷ VND`
+          : `${(price / 1000000).toFixed(0)} triệu VND`
+        : 'liên hệ';
+      
+      // Generate fallback description
+      let fallbackDescription = `Căn ${house_type || 'bất động sản'} tuyệt đẹp tại ${location || 'vị trí đắc địa'}, `;
+      if (bedrooms) fallbackDescription += `${bedrooms} phòng ngủ, `;
+      if (bathrooms) fallbackDescription += `${bathrooms} phòng tắm, `;
+      fallbackDescription += `giá ${priceText}. `;
+      fallbackDescription += `Vị trí thuận lợi, tiện ích đầy đủ, tiềm năng đầu tư cao. `;
+      if (raw_description) {
+        fallbackDescription += raw_description.substring(0, 100) + '...';
+      } else {
+        fallbackDescription += 'Liên hệ ngay để được tư vấn chi tiết!';
+      }
+      
+      console.log('⚠️ [AI] Using fallback description due to API error');
+      
+      // Return 200 with fallback (not 500) to prevent frontend crash
+      return res.json({
+        success: true,
+        data: {
+          optimized_description: fallbackDescription,
+          original_description: raw_description || ''
+        },
+        isFallback: true,
+        warning: 'AI service tạm thời không khả dụng. Đã sử dụng mô tả mặc định.'
       });
     }
   }

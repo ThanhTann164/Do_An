@@ -15,6 +15,9 @@ const {
   iotresponselogs,
   contracts,
   contractsignatures,
+  users,
+  userpackages,
+  packages,
 } = initModels(sequelize);
 const { Op } = require("sequelize");
 
@@ -67,33 +70,112 @@ class HouseRepository {
       return house;
     });
   }
-// Lấy tất cả nhà với phân trang
+// Lấy tất cả nhà với phân trang - SORT BY TIER & BOOST
   async findAllWithPagination(offset = 0, limit = 10) {
     try {
-      const result = await houses.findAndCountAll({
-        where: { Status: "Available" }, // Sử dụng đúng enum value từ model
+      // Get all houses first (no pagination yet) to sort properly
+      const allHouses = await houses.findAll({
+        where: { Status: "Available" },
         include: [
           { 
             model: houseimages, 
             as: "houseimages",
             attributes: ['ImageID', 'HouseID', 'FileName', 'CloudPath', 'DriveFileID', 'IsCover']
+          },
+          {
+            model: users,
+            as: "Owner",
+            attributes: ['UserID', 'FullName', 'Email'],
+            required: false,
+            include: [{
+              model: userpackages,
+              as: "userpackages",
+              where: {
+                status: 'active',
+                end_at: { [Op.gt]: new Date() }
+              },
+              required: false,
+              include: [{
+                model: packages,
+                as: "Package",
+                attributes: ['id', 'name', 'display_name'],
+                required: false
+              }]
+            }]
           }
         ],
-        order: [["CreatedAt", "DESC"]],
-        limit: limit,
-        offset: offset,
-        distinct: true,
-        raw: false
+        raw: false,
+        nest: true
       });
 
-      console.log(`🔍 Repository: findAllWithPagination - Found ${result.count} houses, returning ${result.rows.length} for page ${Math.floor(offset / limit) + 1}`);
+      // Helper function to get package priority
+      const getPackagePriority = (packageName) => {
+        if (!packageName) return 1; // FREE
+        const name = packageName.toUpperCase();
+        if (name === 'PREMIUM') return 3;
+        if (name === 'PRO') return 2;
+        return 1; // FREE
+      };
+
+      // Sort by: Boost > Tier Level > Created At
+      const sortedHouses = allHouses
+        .map(house => {
+          // Get package info safely
+          const owner = house.dataValues?.Owner || house.Owner;
+          const userpackages = owner?.userpackages || owner?.dataValues?.userpackages || [];
+          const activePackage = Array.isArray(userpackages) && userpackages.length > 0 
+            ? userpackages[0]?.Package || userpackages[0]?.dataValues?.Package
+            : null;
+          const packageName = activePackage?.name?.toUpperCase() || activePackage?.dataValues?.name?.toUpperCase() || 'FREE';
+          const packagePriority = getPackagePriority(packageName);
+          
+          // Check if boosted - handle both Sequelize instance and plain object
+          const isBoostedValue = house.dataValues?.IsBoosted ?? house.IsBoosted ?? false;
+          const boostExpiresAt = house.dataValues?.BoostExpiresAt ?? house.BoostExpiresAt;
+          const isBoosted = isBoostedValue && 
+                           boostExpiresAt && 
+                           new Date(boostExpiresAt) > new Date();
+          
+          // Get tierLevel from database or calculate from package
+          const tierLevelValue = house.dataValues?.TierLevel ?? house.TierLevel;
+          const tierLevel = tierLevelValue || packagePriority;
+          
+          // Get createdAt
+          const createdAt = house.dataValues?.createdAt ?? house.createdAt ?? new Date();
+
+          return {
+            house: house,
+            _sortBoost: isBoosted ? 0 : 1, // 0 = boosted (first)
+            _sortTier: tierLevel, // 3 = Premium, 2 = Pro, 1 = Free
+            _createdAt: createdAt
+          };
+        })
+        .sort((a, b) => {
+          // 1st: Boost (boosted first)
+          if (a._sortBoost !== b._sortBoost) {
+            return a._sortBoost - b._sortBoost;
+          }
+          // 2nd: Tier Level (Premium > Pro > Free)
+          if (a._sortTier !== b._sortTier) {
+            return b._sortTier - a._sortTier; // Higher tier first
+          }
+          // 3rd: Created At (newest first)
+          return new Date(b._createdAt) - new Date(a._createdAt);
+        })
+        .map(item => item.house); // Return original house objects
+
+      // Apply pagination after sorting
+      const total = sortedHouses.length;
+      const paginatedHouses = sortedHouses.slice(offset, offset + limit);
+
+      console.log(`🔍 Repository: findAllWithPagination - Found ${total} houses, returning ${paginatedHouses.length} for page ${Math.floor(offset / limit) + 1}`);
 
       return {
-        data: result.rows,
-        total: result.count,
+        data: paginatedHouses,
+        total: total,
         page: Math.floor(offset / limit) + 1,
         pageSize: limit,
-        totalPages: Math.ceil(result.count / limit)
+        totalPages: Math.ceil(total / limit)
       };
     } catch (error) {
       console.error('❌ Error in findAllWithPagination:', error);

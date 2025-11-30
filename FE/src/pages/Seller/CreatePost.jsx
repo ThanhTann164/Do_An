@@ -7,6 +7,7 @@ import provincesData from '../../data/vietnam-provinces.json';
 import { useAuth } from '../../contexts/AuthContext';
 import PackageFeatureGuard from '../../components/PackageFeatureGuard';
 import aiService from '../../services/aiService';
+import { toast } from 'react-toastify';
 import { 
   Lightbulb, 
   Lock, 
@@ -289,7 +290,13 @@ export default function CreatePost() {
                                   });
                                   if (result.success && result.data?.optimized_title) {
                                     setFormData(prev => ({ ...prev, title: result.data.optimized_title }));
-                                    alert('✨ Tối ưu tiêu đề thành công!');
+                                    
+                                    // TASK 2: Handle fallback response
+                                    if (result.isFallback) {
+                                      alert('⚠️ Hệ thống AI đang bận, đã sử dụng mẫu tiêu đề có sẵn.');
+                                    } else {
+                                      alert('✨ Tối ưu tiêu đề thành công!');
+                                    }
                                   } else {
                                     alert(result.message || 'Có lỗi xảy ra khi tối ưu tiêu đề');
                                   }
@@ -458,15 +465,24 @@ export default function CreatePost() {
                                     propertyType: formData.propertyType
                                   });
                                   
+                                  // TASK 2: Handle fallback response
                                   if (result.success && result.data) {
                                     setMarketAnalysisResult(result.data);
+                                    
+                                    if (result.isFallback) {
+                                      toast.warning('⚠️ Hệ thống AI đang bận, đã sử dụng phân tích mặc định.');
+                                    } else if (result.fromCache) {
+                                      toast.info('📊 Phân tích thị trường (Từ cache)');
+                                    } else {
+                                      toast.success('📊 Phân tích thị trường thành công!');
+                                    }
                                   } else {
-                                    alert(result.message || 'Có lỗi xảy ra khi phân tích');
+                                    toast.error(result.message || 'Có lỗi xảy ra khi phân tích');
                                   }
                                 } catch (error) {
                                   console.error('AI market analysis error:', error);
                                   const errorMsg = error.response?.data?.message || error.message || 'Có lỗi xảy ra';
-                                  alert(`❌ ${errorMsg}`);
+                                  toast.error(`❌ ${errorMsg}`);
                                 } finally {
                                   setAiLoading(prev => ({ ...prev, marketAnalysis: false }));
                                 }
@@ -612,9 +628,18 @@ export default function CreatePost() {
                                   price: formData.price ? parseInt(formData.price) : null
                                 });
                                 
+                                // TASK 2: Handle fallback response
                                 if (result.success && result.description) {
                                   setFormData(prev => ({ ...prev, description: result.description }));
-                                  alert('✨ AI đã tạo mô tả thành công!');
+                                  
+                                  // Show warning if fallback
+                                  if (result.isFallback) {
+                                    alert('⚠️ Hệ thống AI đang bận, đã sử dụng mẫu mô tả có sẵn.');
+                                  } else if (result.fromCache) {
+                                    alert('✨ AI đã tạo mô tả thành công! (Từ cache)');
+                                  } else {
+                                    alert('✨ AI đã tạo mô tả thành công!');
+                                  }
                                 } else {
                                   alert(result.message || 'Có lỗi xảy ra khi tạo mô tả');
                                 }
@@ -667,9 +692,15 @@ export default function CreatePost() {
                                       
                                       if (result.success && result.data?.optimized_description) {
                                         setFormData(prev => ({ ...prev, description: result.data.optimized_description }));
-                                        alert('✨ AI đã tối ưu mô tả thành công!');
+                                        
+                                        // TASK 2: Handle fallback response with toast
+                                        if (result.isFallback) {
+                                          toast.warning('⚠️ Hệ thống AI đang bận, đã sử dụng mẫu mô tả có sẵn.');
+                                        } else {
+                                          toast.success('✨ AI đã tối ưu mô tả thành công!');
+                                        }
                                       } else {
-                                        alert(result.message || 'Có lỗi xảy ra khi tối ưu mô tả');
+                                        toast.error(result.message || 'Có lỗi xảy ra khi tối ưu mô tả');
                                       }
                                     } catch (error) {
                                       console.error('AI optimize description error:', error);

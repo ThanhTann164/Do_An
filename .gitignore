@@ -23,6 +23,16 @@ check-packages-data.sql
 update-token.js
 test-db-connection.js
 test-api-my-package.js
+test-gemini-direct.js
+
+# Batch scripts - chỉ giữ lại start-servers.bat
+restart-*.bat
+check-*.bat
+XEM_LOGS_NHANH.bat
+START_CHAT_SYSTEM.bat
+export-database.bat
+reset-server.bat
+test-ai.bat
 
 # Simple/Development files
 simple-server.js

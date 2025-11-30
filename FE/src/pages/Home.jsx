@@ -391,29 +391,56 @@ const formatPrice = (price) => {
                     const imgObj = property.houseimages?.find(i => i.IsCover) || property.houseimages?.[0];
                     const imageUrl = getDriveViewUrl(imgObj) || '/images/img_1.jpg';
                     const id = property.HouseID || property.id;
+                    
+                    // TASK 1: Visualize Tiers - Check tierLevel and packageType
                     const packageType = property.packageType || 'FREE';
-                    const isPremium = packageType === 'PREMIUM';
-                    const isPro = packageType === 'PRO';
+                    const tierLevel = property.tierLevel || (packageType === 'PREMIUM' ? 3 : packageType === 'PRO' ? 2 : 1);
+                    const isPremium = tierLevel === 3 || packageType === 'PREMIUM';
+                    const isPro = tierLevel === 2 || packageType === 'PRO';
+                    
+                    // TASK 1: Check if boosted
+                    const isBoosted = property.isBoosted === true || property.IsBoosted === true;
                     
                     return (
                       <div 
                         key={id} 
                         className={`group rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-400 hover:scale-102 animate-fade-in-up relative ${
                           isPremium 
-                            ? 'bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-400 shadow-yellow-200' 
+                            ? 'bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-500 shadow-yellow-200' 
                             : isPro 
                               ? 'bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-400 shadow-blue-200'
                               : 'bg-white border border-gray-200'
-                        }`}
-                        style={{ animationDelay: `${index * 80}ms` }}
+                        } ${isBoosted ? 'ring-2 ring-yellow-400 ring-opacity-50 shadow-gold' : ''}`}
+                        style={{ 
+                          animationDelay: `${index * 80}ms`,
+                          ...(isBoosted && {
+                            boxShadow: '0 0 20px rgba(255, 215, 0, 0.3), 0 4px 20px rgba(0, 0, 0, 0.1)'
+                          })
+                        }}
                       >
-                        {/* Premium/Pro Badge */}
-                        {isPremium && (
-                          <div className="absolute top-3 right-3 z-10 bg-gradient-to-r from-yellow-400 to-orange-400 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
-                            <span>🔥</span>
-                            <span>Nổi bật</span>
+                        {/* TASK 1: Boost Badge - Top-left, high z-index */}
+                        {isBoosted && (
+                          <div className="absolute top-3 left-3 z-20 bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-xl flex items-center gap-1 animate-pulse">
+                            <span>🚀</span>
+                            <span>Tin Nổi Bật</span>
                           </div>
                         )}
+                        
+                        {/* Premium Badge - Top-right */}
+                        {isPremium && !isBoosted && (
+                          <div className="absolute top-3 right-3 z-10 bg-gradient-to-r from-yellow-400 to-orange-400 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
+                            <span>👑</span>
+                            <span>Premium</span>
+                          </div>
+                        )}
+                        {isPremium && isBoosted && (
+                          <div className="absolute top-3 right-3 z-10 bg-gradient-to-r from-yellow-400 to-orange-400 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
+                            <span>👑</span>
+                            <span>Premium</span>
+                          </div>
+                        )}
+                        
+                        {/* Pro Badge */}
                         {isPro && !isPremium && (
                           <div className="absolute top-3 right-3 z-10 bg-gradient-to-r from-blue-400 to-indigo-400 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
                             <span>⭐</span>

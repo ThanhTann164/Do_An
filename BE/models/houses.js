@@ -71,6 +71,29 @@ module.exports = function(sequelize, DataTypes) {
       allowNull: true,
       defaultValue: "Đông",
       comment: "Hướng nhà"
+    },
+    PriorityScore: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      comment: "Điểm ưu tiên để sort: 1=Free, 2=Pro, 3=Premium"
+    },
+    IsBoosted: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      comment: "Tin đang được boost"
+    },
+    BoostExpiresAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: "Thời gian hết hạn boost"
+    },
+    TierLevel: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 1,
+      comment: "Cấp độ gói: 1=Free, 2=Pro, 3=Premium"
     }
   }, {
     sequelize,
@@ -111,6 +134,34 @@ module.exports = function(sequelize, DataTypes) {
         using: "BTREE",
         fields: [
           { name: "Status" },
+        ]
+      },
+      {
+        name: "idx_houses_priority_score",
+        using: "BTREE",
+        fields: [
+          { name: "PriorityScore" },
+        ]
+      },
+      {
+        name: "idx_houses_is_boosted",
+        using: "BTREE",
+        fields: [
+          { name: "IsBoosted" },
+        ]
+      },
+      {
+        name: "idx_houses_boost_expires_at",
+        using: "BTREE",
+        fields: [
+          { name: "BoostExpiresAt" },
+        ]
+      },
+      {
+        name: "idx_houses_tier_level",
+        using: "BTREE",
+        fields: [
+          { name: "TierLevel" },
         ]
       },
     ]
