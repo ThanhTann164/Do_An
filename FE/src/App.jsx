@@ -6,7 +6,6 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { AuthProvider } from './contexts/AuthContext';
 import { PackageProvider } from './context/PackageContext';
-import PackageDebug from './components/PackageDebug';
 
 // Common Pages
 import Home from "./pages/Home.jsx";
@@ -46,7 +45,6 @@ import ChatIconsManager from "./components/ChatIconsManager.jsx";
 
 // Notifications
 import Notifications from "./pages/Notifications.jsx";
-import TestNotifications from "./pages/TestNotifications.jsx";
 
 // Seller Pages
 import SellerPosts from "./pages/Seller/Posts.jsx";
@@ -101,7 +99,6 @@ export default function App() {
       <PackageProvider>
       <BrowserRouter>
         <ChatIconsManager />
-        <PackageDebug />
         <Suspense fallback={<LoadingSpinner />}>
           <Routes>
           {/* Public Routes */}
@@ -122,7 +119,6 @@ export default function App() {
 
           <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
           <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
-          <Route path="/test-notifications" element={<ProtectedRoute><TestNotifications /></ProtectedRoute>} />
 
           {/* Package Routes */}
           <Route path="/packages" element={<PackageSelection />} />

@@ -55,3 +55,10 @@ desktop.ini
 
 # Duplicate models folder (use BE/models instead)
 models/
+
+# Test & Debug pages/components
+FE/src/pages/Test*.jsx
+FE/src/pages/*Test*.jsx
+FE/src/components/*Debug*.jsx
+FE/src/main-test.jsx
+FE/public/test*.html
