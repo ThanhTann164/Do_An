@@ -285,101 +285,7 @@ export const AuthProvider = ({ children }) => {
     setPackageSummary(null);
   }, [updatePackageState]);
 
-  // Fetch user info - Luôn fetch từ API để đảm bảo dữ liệu mới nhất
-  const fetchUserInfo = useCallback(async (options = {}) => {
-    const { force = false } = options;
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setUser(null);
-        clearPackageState();
-        if (!options.silent) {
-          setLoading(false);
-        }
-        return null;
-      }
-
-      console.log('🔄 [AuthContext] Fetching user info from API...');
-      const response = await fetch(`${API_URL}/api/user`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        cache: force ? 'no-cache' : 'default' // Force refresh nếu cần
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const userData = data.user || data.data || data;
-        
-        console.log('✅ [AuthContext] User data received:', {
-          userId: userData?.userId,
-          role: userData?.role,
-          currentPackage: userData?.currentPackage || data?.currentPackage
-        });
-
-        // Xử lý currentPackage từ root level hoặc user object
-        if (data.currentPackage && !userData.currentPackage) {
-          userData.currentPackage = data.currentPackage;
-        }
-
-        const updatedUser = applyUserState(userData);
-        
-        // Nếu là Seller và có currentPackage, trigger fetch package details
-        if (isSellerRole(getUserRole(updatedUser)) && updatedUser?.currentPackage) {
-          // Fetch package details ngay sau khi có user info
-          setTimeout(() => {
-            fetchMyPackage({ targetUser: updatedUser, silentOnMissingToken: true });
-          }, 100);
-        }
-        
-        return updatedUser;
-      }
-
-      // Token invalid
-      console.warn('⚠️ [AuthContext] Token invalid, clearing auth state');
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      applyUserState(null);
-      return null;
-    } catch (error) {
-      console.error('❌ [AuthContext] Error fetching user info:', error);
-      applyUserState(null);
-      return null;
-    } finally {
-      if (!options.silent) {
-        setLoading(false);
-      }
-    }
-  }, [clearPackageState, fetchMyPackage]);
-
-  // Refresh profile - Function để gọi từ bất kỳ đâu (như PaymentSuccess)
-  const refreshProfile = useCallback(async () => {
-    console.log('🔄 [AuthContext] Refreshing user profile...');
-    setLoading(true);
-    try {
-      const updatedUser = await fetchUserInfo({ force: true, silent: true });
-      
-      // Nếu là Seller, cũng refresh package
-      if (updatedUser && isSellerRole(getUserRole(updatedUser))) {
-        await fetchMyPackage({ targetUser: updatedUser, silentOnMissingToken: true });
-      }
-      
-      // Trigger refresh event cho các components khác
-      window.dispatchEvent(new Event("package:refresh"));
-      window.dispatchEvent(new Event("user:refresh"));
-      
-      console.log('✅ [AuthContext] Profile refreshed successfully');
-      return updatedUser;
-    } catch (error) {
-      console.error('❌ [AuthContext] Error refreshing profile:', error);
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchUserInfo, fetchMyPackage]);
-
-  // Fetch package info
+  // Fetch package info - Định nghĩa trước để có thể dùng trong fetchUserInfo
   const fetchMyPackage = useCallback(async ({ silentOnMissingToken = false, targetUser = null } = {}) => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -427,36 +333,122 @@ export const AuthProvider = ({ children }) => {
         let detail = data?.raw || null;
         console.log('📦 [AuthContext] Detail before check:', detail);
         console.log('📦 [AuthContext] Package name check:', data?.packageName, '=== FREE?', data?.packageName === 'FREE');
-        
-        if (!detail && data?.packageName === 'FREE') {
-          console.log('📦 [AuthContext] Creating FREE package detail fallback');
-          detail = cloneFreePackageDetail();
+
+        if (data?.packageName === 'FREE' || data?.isFree) {
+          detail = null;
+          console.log('📦 [AuthContext] Package is FREE, setting detail to null');
         }
 
-        console.log('📦 [AuthContext] Final detail:', detail);
-        console.log('📦 [AuthContext] Detail userPackage name:', detail?.userPackage?.name);
         updatePackageState(detail);
-        console.log('📦 [AuthContext] Package loaded:', detail?.userPackage?.name || data?.packageName || 'NONE');
+        console.log('✅ [AuthContext] Package state updated:', {
+          packageName: data?.packageName,
+          hasDetail: !!detail
+        });
         return data;
-      }
-
-      console.error('❌ [AuthContext] Package API error:', response.status, data);
-
-      if (response.status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+      } else {
+        console.warn('⚠️ [AuthContext] Package API returned error or empty data');
         clearPackageState();
+        return null;
       }
     } catch (error) {
-      console.error('❌ [AuthContext] Error fetching package info:', error);
-      setPackageSummary(null);
-      clearPackageState();
+      console.error('❌ [AuthContext] Error fetching package:', error);
+      if (!silentOnMissingToken) {
+        clearPackageState();
+      }
+      return null;
     } finally {
       setPackageLoading(false);
     }
+  }, [user, clearPackageState, updatePackageState]);
 
-    return null;
-  }, [user, clearPackageState]);
+  // Fetch user info - Luôn fetch từ API để đảm bảo dữ liệu mới nhất
+  const fetchUserInfo = useCallback(async (options = {}) => {
+    const { force = false } = options;
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setUser(null);
+        clearPackageState();
+        if (!options.silent) {
+          setLoading(false);
+        }
+        return null;
+      }
+
+      console.log('🔄 [AuthContext] Fetching user info from API...');
+      const response = await fetch(`${API_URL}/api/user`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        cache: force ? 'no-cache' : 'default' // Force refresh nếu cần
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const userData = data.user || data.data || data;
+        
+        console.log('✅ [AuthContext] User data received:', {
+          userId: userData?.userId,
+          role: userData?.role,
+          currentPackage: userData?.currentPackage || data?.currentPackage
+        });
+
+        // Xử lý currentPackage từ root level hoặc user object
+        if (data.currentPackage && !userData.currentPackage) {
+          userData.currentPackage = data.currentPackage;
+        }
+
+        const updatedUser = applyUserState(userData);
+        
+        // Note: fetchMyPackage sẽ được gọi sau khi component mount hoặc từ useEffect khác
+        // Không gọi trực tiếp ở đây để tránh circular dependency
+        
+        return updatedUser;
+      }
+
+      // Token invalid
+      console.warn('⚠️ [AuthContext] Token invalid, clearing auth state');
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      applyUserState(null);
+      return null;
+    } catch (error) {
+      console.error('❌ [AuthContext] Error fetching user info:', error);
+      applyUserState(null);
+      return null;
+    } finally {
+      if (!options.silent) {
+        setLoading(false);
+      }
+    }
+  }, [clearPackageState, fetchMyPackage]);
+
+  // Refresh profile - Function để gọi từ bất kỳ đâu (như PaymentSuccess)
+  const refreshProfile = useCallback(async () => {
+    console.log('🔄 [AuthContext] Refreshing user profile...');
+    setLoading(true);
+    try {
+      const updatedUser = await fetchUserInfo({ force: true, silent: true });
+      
+      // Nếu là Seller, cũng refresh package
+      if (updatedUser && isSellerRole(getUserRole(updatedUser))) {
+        await fetchMyPackage({ targetUser: updatedUser, silentOnMissingToken: true });
+      }
+      
+      // Trigger refresh event cho các components khác
+      window.dispatchEvent(new Event("package:refresh"));
+      window.dispatchEvent(new Event("user:refresh"));
+      
+      console.log('✅ [AuthContext] Profile refreshed successfully');
+      return updatedUser;
+    } catch (error) {
+      console.error('❌ [AuthContext] Error refreshing profile:', error);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchUserInfo, fetchMyPackage]);
 
   // Login function
   const login = async (email, password) => {
