@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import aiService from '../services/aiService';
 import { Loader2, Zap, Brain, FileText, AlertCircle, CheckCircle2 } from 'lucide-react';
 
