@@ -30,7 +30,10 @@ import {
   Linkedin,
   ExternalLink,
   Clock,
-  Building
+  Building,
+  Crown,
+  Lock,
+  Sparkles
 } from 'lucide-react';
 
 export default function Profile() {
@@ -74,6 +77,94 @@ export default function Profile() {
   const planStatusText = isSeller
     ? (pkgLoading ? 'Đang đồng bộ gói...' : packageExpired ? 'Gói đã hết hạn' : daysLeft !== null ? `${daysLeft} ngày còn lại` : 'Không giới hạn thời gian')
     : '';
+
+  // Get current package tier (FREE, PRO, PREMIUM)
+  const getPackageTier = () => {
+    if (!isSeller) return 'FREE';
+    const packageName = (user?.currentPackage?.name || 
+                         authUser?.currentPackage?.name || 
+                         packageSummary?.packageName || 
+                         activePackage?.name || 
+                         'FREE').toUpperCase();
+    return packageName === 'PREMIUM' ? 'PREMIUM' : packageName === 'PRO' ? 'PRO' : 'FREE';
+  };
+
+  const packageTier = getPackageTier();
+
+  // Tier-based theme configuration
+  const getTierStyle = () => {
+    switch (packageTier) {
+      case 'PREMIUM':
+        return {
+          tier: 'PREMIUM',
+          primaryColor: '#FFD700', // Gold
+          secondaryColor: '#000000', // Black
+          accentColor: '#8B5CF6', // Purple for gradients
+          headerBg: 'bg-gradient-to-br from-yellow-50 via-amber-50 to-orange-50',
+          headerBorder: 'border-yellow-300',
+          avatarBorder: 'border-4 border-yellow-500',
+          avatarGlow: 'shadow-[0_0_20px_rgba(255,215,0,0.5)]',
+          badgeBg: 'bg-gradient-to-r from-yellow-400 to-amber-500',
+          badgeText: 'text-white',
+          badgeIcon: Crown,
+          cardBg: 'bg-white',
+          cardBorder: 'border-yellow-200',
+          cardShadow: 'shadow-lg shadow-yellow-100',
+          textPrimary: 'text-gray-900',
+          textSecondary: 'text-gray-600',
+          buttonPrimary: 'bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700',
+          verifiedIcon: true,
+          crownIcon: true
+        };
+      case 'PRO':
+        return {
+          tier: 'PRO',
+          primaryColor: '#1e3a8a', // Navy Blue
+          secondaryColor: '#64748b', // Silver
+          accentColor: '#3b82f6', // Blue
+          headerBg: 'bg-gradient-to-br from-blue-50 via-indigo-50 to-slate-50',
+          headerBorder: 'border-blue-300',
+          avatarBorder: 'border-2 border-blue-500',
+          avatarGlow: '',
+          badgeBg: 'bg-blue-600',
+          badgeText: 'text-white',
+          badgeIcon: Shield,
+          cardBg: 'bg-white',
+          cardBorder: 'border-blue-200',
+          cardShadow: 'shadow-md shadow-blue-50',
+          textPrimary: 'text-gray-900',
+          textSecondary: 'text-gray-600',
+          buttonPrimary: 'bg-blue-600 hover:bg-blue-700',
+          verifiedIcon: true,
+          crownIcon: false
+        };
+      default: // FREE
+        return {
+          tier: 'FREE',
+          primaryColor: '#6b7280', // Gray
+          secondaryColor: '#9ca3af', // Light Gray
+          accentColor: '#d1d5db', // Very Light Gray
+          headerBg: 'bg-white',
+          headerBorder: 'border-gray-200',
+          avatarBorder: 'border-2 border-gray-300',
+          avatarGlow: '',
+          badgeBg: 'bg-gray-100',
+          badgeText: 'text-gray-700',
+          badgeIcon: User,
+          cardBg: 'bg-white',
+          cardBorder: 'border-gray-200',
+          cardShadow: 'shadow-sm',
+          textPrimary: 'text-gray-900',
+          textSecondary: 'text-gray-500',
+          buttonPrimary: 'bg-gray-600 hover:bg-gray-700',
+          verifiedIcon: false,
+          crownIcon: false
+        };
+    }
+  };
+
+  const tierStyle = getTierStyle();
+  const BadgeIcon = tierStyle.badgeIcon;
 
   // Debug: Log component mount
   console.log('🔍 Profile component rendered, loading:', loading, 'user:', user);
@@ -501,17 +592,24 @@ export default function Profile() {
 
         {!editing ? (
           <div className="space-y-8">
-            {/* Modern Profile Header */}
-            <div className="glass-card glass-card--header header-shine fade-up">
-                <div className="flex flex-col lg:flex-row items-center lg:items-start gap-8">
-                  {/* Avatar Section */}
-                  <div className="avatar-container flex-shrink-0">
-                    <div className="avatar-wrapper">
+            {/* Dynamic Profile Header - Tier-Based Design */}
+            <div className={`${tierStyle.headerBg} rounded-2xl shadow-sm border-2 ${tierStyle.headerBorder} p-8 lg:p-10 fade-up relative overflow-hidden`}>
+              {/* Premium Glow Effect */}
+              {packageTier === 'PREMIUM' && (
+                <div className="absolute inset-0 bg-gradient-to-br from-yellow-200/20 via-transparent to-amber-200/20 pointer-events-none"></div>
+              )}
+              
+              <div className="flex flex-col lg:flex-row items-center lg:items-start gap-8 relative z-10">
+                {/* Avatar Section - Tier-Based Styling */}
+                <div className="flex-shrink-0">
+                  <div className="relative">
+                    <div className={`w-32 h-32 rounded-full overflow-hidden ${tierStyle.avatarBorder} ${tierStyle.avatarGlow} shadow-lg relative`}>
                       {(user?.avatarUrl || user?.AvatarUrl) ? (
                         <img 
                           key={`avatar-main-${avatarKey}`}
                           src={`${API_URL}${user?.avatarUrl || user?.AvatarUrl}`}
                           alt="Avatar"
+                          className="w-full h-full object-cover"
                           onLoad={() => console.log('✅ Avatar loaded successfully')}
                           onError={(e) => {
                             console.error('❌ Avatar load error, using default');
@@ -520,82 +618,178 @@ export default function Profile() {
                           }}
                         />
                       ) : null}
-                      <div className={`avatar-default ${(user?.avatarUrl || user?.AvatarUrl) ? 'hidden' : 'flex'}`}>
-                        <User className="w-12 h-12 text-gray-400" />
+                      <div className={`w-full h-full bg-gray-100 flex items-center justify-center ${(user?.avatarUrl || user?.AvatarUrl) ? 'hidden' : 'flex'}`}>
+                        <User className="w-16 h-16 text-gray-400" />
                       </div>
-                      <button 
-                        onClick={() => setEditing(true)}
-                        className="avatar-camera-icon"
-                        title="Thay đổi ảnh đại diện"
-                      >
-                        <Camera />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Profile Info - Centered */}
-                  <div className="flex-1 text-center lg:text-left">
-                    <div className="flex flex-col gap-2 mb-4">
-                      <div className="flex items-center justify-center lg:justify-start gap-3">
-                        <h1 className="text-3xl lg:text-4xl font-bold text-gray-900">
-                          {user?.fullName || user?.display_name || user?.FullName || 'Người dùng'}
-                        </h1>
-                        {isSeller && <PackageBadge size="md" className="shadow-sm" />}
-                      </div>
-                      {isSeller && (
-                        <>
-                          <p className="text-sm text-gray-600">{planStatusText}</p>
-                          <p className="text-xs text-gray-500">{planExpiryText}</p>
-                        </>
+                      
+                      {/* Crown Icon for Premium */}
+                      {packageTier === 'PREMIUM' && (
+                        <div className="absolute -top-2 -right-2 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-full p-2 shadow-lg animate-pulse">
+                          <Crown className="w-6 h-6 text-white" />
+                        </div>
                       )}
-                      <p className="text-lg text-gray-600">{user?.email}</p>
                     </div>
-                    
-                    {/* Modern Badges */}
-                    <div className="flex flex-wrap justify-center lg:justify-start gap-4 mb-6">
-                      <span className="profile-badge profile-badge--seller">
-                        <Shield className="w-4 h-4" />
-                        {user?.role || 'User'}
-                      </span>
-                      <span className="profile-badge profile-badge--active">
-                        <CheckCircle className="w-4 h-4" />
-                        {user?.status === 'Active' ? 'Hoạt động' : 'Không hoạt động'}
-                      </span>
-                    </div>
-                    
-                    <p className="text-gray-700 italic text-lg font-medium">"Chuyên nghiệp - Uy tín - Tận tâm"</p>
+                    <button 
+                      onClick={() => setEditing(true)}
+                      className={`absolute bottom-0 right-0 bg-white rounded-full p-2 shadow-lg border-2 transition-colors ${
+                        packageTier === 'PREMIUM' 
+                          ? 'border-yellow-300 hover:border-yellow-500' 
+                          : packageTier === 'PRO'
+                            ? 'border-blue-300 hover:border-blue-500'
+                            : 'border-gray-200 hover:border-gray-400'
+                      }`}
+                      title="Thay đổi ảnh đại diện"
+                    >
+                      <Camera className={`w-5 h-5 ${
+                        packageTier === 'PREMIUM' 
+                          ? 'text-yellow-600' 
+                          : packageTier === 'PRO'
+                            ? 'text-blue-600'
+                            : 'text-gray-600'
+                      }`} />
+                    </button>
                   </div>
                 </div>
+
+                {/* Profile Info */}
+                <div className="flex-1 text-center lg:text-left">
+                  <div className="mb-6">
+                    <div className="flex flex-col lg:flex-row lg:items-center gap-4 mb-3">
+                      <h1 className={`text-4xl lg:text-5xl font-bold ${tierStyle.textPrimary} leading-tight`}>
+                        {user?.fullName || user?.display_name || user?.FullName || 'Người dùng'}
+                      </h1>
+                      {/* Verified Icon for PRO and PREMIUM */}
+                      {tierStyle.verifiedIcon && (
+                        <div className={`inline-flex items-center justify-center w-8 h-8 rounded-full ${
+                          packageTier === 'PREMIUM' 
+                            ? 'bg-gradient-to-br from-yellow-400 to-amber-500' 
+                            : 'bg-blue-500'
+                        } shadow-md`}>
+                          <CheckCircle className="w-5 h-5 text-white" />
+                        </div>
+                      )}
+                      {isSeller && <PackageBadge size="md" className="shadow-sm" />}
+                    </div>
+                    <p className={`text-lg ${tierStyle.textSecondary} mb-2`}>{user?.email}</p>
+                    {isSeller && (
+                      <div className="flex flex-col gap-1 mb-4">
+                        <p className={`text-sm ${tierStyle.textSecondary}`}>{planStatusText}</p>
+                        <p className="text-xs text-gray-500">{planExpiryText}</p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Tier-Based Badges */}
+                  <div className="flex flex-wrap justify-center lg:justify-start gap-3">
+                    <span className={`inline-flex items-center gap-2 px-4 py-2 ${tierStyle.badgeBg} ${tierStyle.badgeText} rounded-full text-sm font-bold shadow-md`}>
+                      <BadgeIcon className="w-4 h-4" />
+                      {packageTier === 'PREMIUM' ? 'PREMIUM MEMBER' : packageTier === 'PRO' ? 'PRO SELLER' : 'Member'}
+                    </span>
+                    <span className={`inline-flex items-center gap-2 px-4 py-2 bg-white border-2 rounded-full text-sm font-medium transition-colors ${
+                      user?.status === 'Active' 
+                        ? 'border-green-200 text-green-700 hover:border-green-300' 
+                        : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                    }`}>
+                      <CheckCircle className={`w-4 h-4 ${user?.status === 'Active' ? 'text-green-600' : 'text-gray-400'}`} />
+                      {user?.status === 'Active' ? 'Hoạt động' : 'Không hoạt động'}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
 
+            {/* Upgrade Banner for FREE Tier */}
+            {packageTier === 'FREE' && isSeller && (
+              <div className="bg-gradient-to-r from-[#0F5F5C] to-[#1B7A78] rounded-2xl shadow-lg border-2 border-[#0F5F5C] p-6 lg:p-8 fade-up">
+                <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
+                  <div className="flex-1 text-center lg:text-left">
+                    <h3 className="text-2xl lg:text-3xl font-bold text-white mb-2">
+                      🔒 Nâng cấp ngay để mở khóa toàn bộ tính năng!
+                    </h3>
+                    <p className="text-white/90 text-lg mb-4">
+                      Nhận huy hiệu xác thực, tăng lượt đăng bài, và nhiều quyền lợi độc quyền khác.
+                    </p>
+                    <div className="flex flex-wrap gap-3 justify-center lg:justify-start">
+                      <span className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 text-white rounded-full text-sm">
+                        <Lock className="w-4 h-4" />
+                        Huy hiệu xác thực
+                      </span>
+                      <span className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 text-white rounded-full text-sm">
+                        <Lock className="w-4 h-4" />
+                        Nhiều bài đăng hơn
+                      </span>
+                      <span className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 text-white rounded-full text-sm">
+                        <Lock className="w-4 h-4" />
+                        Ưu tiên hiển thị
+                      </span>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => navigate('/packages')}
+                    className="bg-white text-[#0F5F5C] px-8 py-4 rounded-xl font-bold text-lg hover:bg-gray-100 transition-colors shadow-lg hover:shadow-xl whitespace-nowrap"
+                  >
+                    Nâng cấp ngay →
+                  </button>
+                </div>
+              </div>
+            )}
+
             {isSeller && (
-              <div className="glass-card p-6 fade-up">
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className={`${tierStyle.cardBg} rounded-2xl ${tierStyle.cardShadow} border-2 ${tierStyle.cardBorder} p-8 lg:p-10 fade-up`}>
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-8 pb-8 border-b border-gray-100">
                   <div>
-                    <p className="text-sm uppercase tracking-wide text-gray-500">Gói hiện tại</p>
-                    <h3 className="text-2xl font-bold text-gray-900">{currentPackageName}</h3>
-                    <p className="text-sm text-gray-600">{planStatusText}</p>
-                    <p className="text-xs text-gray-500">{planExpiryText}</p>
+                    <p className={`text-xs uppercase tracking-wider ${tierStyle.textSecondary} font-semibold mb-2`}>Gói hiện tại</p>
+                    <h3 className={`text-3xl font-bold ${tierStyle.textPrimary} mb-2`}>{currentPackageName}</h3>
+                    <div className="flex flex-col gap-1">
+                      <p className={`text-sm ${tierStyle.textSecondary}`}>{planStatusText}</p>
+                      <p className="text-xs text-gray-500">{planExpiryText}</p>
+                    </div>
                   </div>
                   <PackageBadge size="lg" className="shadow-lg" />
                 </div>
-                <div className="grid sm:grid-cols-2 gap-4 mt-6">
-                  <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
-                    <p className="text-sm text-gray-500 mb-1">Bài đăng mỗi ngày</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {postLimits?.daily === -1 ? 'Không giới hạn' : `${postLimits?.daily || 0} bài`}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Đã dùng hôm nay: {postLimits?.daily_used || 0}
+                <div className="grid sm:grid-cols-2 gap-6">
+                  <div className={`p-6 rounded-xl bg-gray-50 border-2 ${tierStyle.cardBorder} hover:${tierStyle.cardBorder} transition-colors`}>
+                    <div className="flex items-center gap-4 mb-3">
+                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                        packageTier === 'PREMIUM' 
+                          ? 'bg-gradient-to-br from-yellow-500 to-amber-600' 
+                          : packageTier === 'PRO'
+                            ? 'bg-blue-600'
+                            : 'bg-gray-600'
+                      }`}>
+                        <FileText className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <p className={`text-sm font-medium ${tierStyle.textSecondary} mb-1`}>Bài đăng mỗi ngày</p>
+                        <p className={`text-2xl font-bold ${tierStyle.textPrimary}`}>
+                          {postLimits?.daily === -1 ? 'Không giới hạn' : `${postLimits?.daily || 0} bài`}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500 pl-16">
+                      Đã dùng hôm nay: <span className="font-semibold text-gray-700">{postLimits?.daily_used || 0}</span>
                     </p>
                   </div>
-                  <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
-                    <p className="text-sm text-gray-500 mb-1">Lượt boost</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {boostLimits?.per_day === -1 ? 'Không giới hạn' : `${boostLimits?.per_day || 0} lượt/ngày`}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Đã dùng hôm nay: {boostLimits?.used_today || 0}
+                  <div className={`p-6 rounded-xl bg-gray-50 border-2 ${tierStyle.cardBorder} hover:${tierStyle.cardBorder} transition-colors`}>
+                    <div className="flex items-center gap-4 mb-3">
+                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                        packageTier === 'PREMIUM' 
+                          ? 'bg-gradient-to-br from-yellow-500 to-amber-600' 
+                          : packageTier === 'PRO'
+                            ? 'bg-blue-600'
+                            : 'bg-gray-600'
+                      }`}>
+                        <Zap className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <p className={`text-sm font-medium ${tierStyle.textSecondary} mb-1`}>Lượt boost</p>
+                        <p className={`text-2xl font-bold ${tierStyle.textPrimary}`}>
+                          {boostLimits?.per_day === -1 ? 'Không giới hạn' : `${boostLimits?.per_day || 0} lượt/ngày`}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500 pl-16">
+                      Đã dùng hôm nay: <span className="font-semibold text-gray-700">{boostLimits?.used_today || 0}</span>
                     </p>
                   </div>
                 </div>
@@ -603,77 +797,84 @@ export default function Profile() {
             )}
 
             <div className="grid lg:grid-cols-3 gap-8">
-              {/* Personal Information */}
+              {/* Personal Information - Clean List Format */}
               <div className="lg:col-span-2">
-                <div className="glass-card p-8 fade-up fade-up--delay-1">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
-                    <div className="icon-container icon-container--emerald mr-3">
-                      <User className="w-5 h-5 text-white" />
-                    </div>
+                <div className={`${tierStyle.cardBg} rounded-2xl ${tierStyle.cardShadow} border-2 ${tierStyle.cardBorder} p-8 lg:p-10 fade-up fade-up--delay-1`}>
+                  <h3 className={`text-2xl font-bold ${tierStyle.textPrimary} mb-8 flex items-center`}>
+                    <User className={`w-6 h-6 mr-3 ${
+                      packageTier === 'PREMIUM' 
+                        ? 'text-yellow-600' 
+                        : packageTier === 'PRO'
+                          ? 'text-blue-600'
+                          : 'text-gray-600'
+                    }`} />
                     Thông tin cá nhân
                   </h3>
                   
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="info-card info-card--emerald flex items-center gpu-accelerated">
-                      <div className="icon-container icon-container--emerald mr-4">
-                        <Phone className="w-6 h-6 text-white" />
+                  <div className="space-y-6">
+                    {/* Phone */}
+                    <div className="flex items-start gap-4 pb-6 border-b border-gray-100 last:border-0">
+                      <div className="w-12 h-12 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0">
+                        <Phone className="w-6 h-6 text-gray-600" />
                       </div>
-                      <div>
-                        <span className="text-sm font-semibold text-emerald-600 block">Điện thoại</span>
-                        <span className="text-lg font-medium text-gray-800">{user?.phone || user?.PhoneNumber || 'Chưa cập nhật'}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="info-card info-card--blue flex items-center gpu-accelerated">
-                      <div className="icon-container icon-container--blue mr-4">
-                        <Mail className="w-6 h-6 text-white" />
-                      </div>
-                      <div>
-                        <span className="text-sm font-semibold text-blue-600 block">Email</span>
-                        <span className="text-lg font-medium text-gray-800 truncate">{user?.email}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-500 mb-1">Điện thoại</p>
+                        <p className="text-lg font-semibold text-gray-900">{user?.phone || user?.PhoneNumber || 'Chưa cập nhật'}</p>
                       </div>
                     </div>
                     
-                    <div className="info-card info-card--purple flex items-center gpu-accelerated">
-                      <div className="icon-container icon-container--purple mr-4">
-                        <MapPin className="w-6 h-6 text-white" />
+                    {/* Email */}
+                    <div className="flex items-start gap-4 pb-6 border-b border-gray-100 last:border-0">
+                      <div className="w-12 h-12 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0">
+                        <Mail className="w-6 h-6 text-gray-600" />
                       </div>
-                      <div>
-                        <span className="text-sm font-semibold text-purple-600 block">Địa chỉ</span>
-                        <span className="text-lg font-medium text-gray-800">{user?.address || user?.Address || 'TP. Hồ Chí Minh'}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="info-card info-card--orange flex items-center gpu-accelerated">
-                      <div className="icon-container icon-container--orange mr-4">
-                        <Clock className="w-6 h-6 text-white" />
-                      </div>
-                      <div>
-                        <span className="text-sm font-semibold text-orange-600 block">Múi giờ</span>
-                        <span className="text-lg font-medium text-gray-800">{user?.timezone || user?.Timezone || 'GMT+7 (ICT)'}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-500 mb-1">Email</p>
+                        <p className="text-lg font-semibold text-gray-900 truncate">{user?.email}</p>
                       </div>
                     </div>
                     
-                    <div className="md:col-span-2 info-card info-card--indigo flex items-center gpu-accelerated">
-                      <div className="icon-container icon-container--indigo mr-4">
-                        <Globe className="w-6 h-6 text-white" />
+                    {/* Address */}
+                    <div className="flex items-start gap-4 pb-6 border-b border-gray-100 last:border-0">
+                      <div className="w-12 h-12 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0">
+                        <MapPin className="w-6 h-6 text-gray-600" />
                       </div>
-                      <div>
-                        <span className="text-sm font-semibold text-indigo-600 block">Website</span>
-                        <span className="text-lg font-medium text-gray-800">
-                          {user?.website || user?.Website ? (
-                            <a 
-                              href={user?.website || user?.Website} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-indigo-600 hover:text-indigo-800 underline"
-                            >
-                              {user?.website || user?.Website}
-                            </a>
-                          ) : (
-                            'Chưa cập nhật'
-                          )}
-                        </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-500 mb-1">Địa chỉ</p>
+                        <p className="text-lg font-semibold text-gray-900">{user?.address || user?.Address || 'TP. Hồ Chí Minh'}</p>
+                      </div>
+                    </div>
+                    
+                    {/* Timezone */}
+                    <div className="flex items-start gap-4 pb-6 border-b border-gray-100 last:border-0">
+                      <div className="w-12 h-12 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0">
+                        <Clock className="w-6 h-6 text-gray-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-500 mb-1">Múi giờ</p>
+                        <p className="text-lg font-semibold text-gray-900">{user?.timezone || user?.Timezone || 'GMT+7 (ICT)'}</p>
+                      </div>
+                    </div>
+                    
+                    {/* Website */}
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0">
+                        <Globe className="w-6 h-6 text-gray-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-500 mb-1">Website</p>
+                        {user?.website || user?.Website ? (
+                          <a 
+                            href={user?.website || user?.Website} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-lg font-semibold text-[#0F5F5C] hover:text-[#0a4a47] underline"
+                          >
+                            {user?.website || user?.Website}
+                          </a>
+                        ) : (
+                          <p className="text-lg font-semibold text-gray-400">Chưa cập nhật</p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -683,17 +884,21 @@ export default function Profile() {
               {/* Actions Column */}
               <div className="space-y-6">
                 {/* Quick Actions */}
-                <div className="glass-card p-6 fade-up fade-up--delay-2">
-                  <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-                    <div className="icon-container icon-container--emerald mr-3">
-                      <Zap className="w-4 h-4 text-white" />
-                    </div>
+                <div className={`${tierStyle.cardBg} rounded-2xl ${tierStyle.cardShadow} border-2 ${tierStyle.cardBorder} p-6 fade-up fade-up--delay-2`}>
+                  <h3 className={`text-xl font-bold ${tierStyle.textPrimary} mb-6 flex items-center`}>
+                    <Zap className={`w-5 h-5 mr-3 ${
+                      packageTier === 'PREMIUM' 
+                        ? 'text-yellow-600' 
+                        : packageTier === 'PRO'
+                          ? 'text-blue-600'
+                          : 'text-gray-600'
+                    }`} />
                     Thao tác nhanh
                   </h3>
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     <button 
                       onClick={() => setEditing(true)}
-                      className="w-full flex items-center justify-center px-6 py-4 btn-premium btn-premium--primary shadow-glow"
+                      className={`w-full flex items-center justify-center px-6 py-4 ${tierStyle.buttonPrimary} text-white rounded-xl font-semibold transition-colors shadow-sm hover:shadow-md`}
                     >
                       <Edit3 className="w-5 h-5 mr-3" />
                       Chỉnh sửa thông tin
@@ -701,7 +906,7 @@ export default function Profile() {
                     
                     <button 
                       onClick={() => navigate('/change-password')}
-                      className="w-full flex items-center justify-center px-6 py-4 btn-premium bg-gray-100 hover:bg-gray-200 text-gray-700 hover:text-gray-900 font-semibold"
+                      className="w-full flex items-center justify-center px-6 py-4 bg-white border-2 border-gray-200 hover:border-gray-300 text-gray-700 hover:text-gray-900 rounded-xl font-semibold transition-colors"
                     >
                       <Key className="w-5 h-5 mr-3" />
                       Đổi mật khẩu
@@ -709,7 +914,7 @@ export default function Profile() {
                     
                     <button 
                       onClick={handleLogout}
-                      className="w-full flex items-center justify-center px-6 py-4 btn-premium bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 font-semibold border border-red-200"
+                      className="w-full flex items-center justify-center px-6 py-4 bg-white border-2 border-red-200 hover:border-red-300 text-red-600 hover:text-red-700 rounded-xl font-semibold transition-colors"
                     >
                       <LogOut className="w-5 h-5 mr-3" />
                       Đăng xuất
@@ -719,17 +924,21 @@ export default function Profile() {
 
                 {/* Seller Tools */}
                 {user?.role === 'Seller' && (
-                  <div className="glass-card p-6 fade-up fade-up--delay-3">
-                    <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-                      <div className="icon-container icon-container--blue mr-3">
-                        <Building className="w-4 h-4 text-white" />
-                      </div>
+                  <div className={`${tierStyle.cardBg} rounded-2xl ${tierStyle.cardShadow} border-2 ${tierStyle.cardBorder} p-6 fade-up fade-up--delay-3`}>
+                    <h3 className={`text-xl font-bold ${tierStyle.textPrimary} mb-6 flex items-center`}>
+                      <Building className={`w-5 h-5 mr-3 ${
+                        packageTier === 'PREMIUM' 
+                          ? 'text-yellow-600' 
+                          : packageTier === 'PRO'
+                            ? 'text-blue-600'
+                            : 'text-gray-600'
+                      }`} />
                       Công cụ Seller
                     </h3>
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       <button 
                         onClick={() => navigate('/seller/dashboard')}
-                        className="w-full flex items-center justify-center px-6 py-4 btn-premium btn-premium--primary shadow-glow"
+                        className={`w-full flex items-center justify-center px-6 py-4 ${tierStyle.buttonPrimary} text-white rounded-xl font-semibold transition-colors shadow-sm hover:shadow-md`}
                       >
                         <Building className="w-5 h-5 mr-3" />
                         Seller Dashboard
@@ -737,7 +946,7 @@ export default function Profile() {
                       
                       <button 
                         onClick={() => navigate('/packages')}
-                        className="w-full flex items-center justify-center px-6 py-4 btn-premium bg-yellow-50 hover:bg-yellow-100 text-yellow-700 hover:text-yellow-800 font-semibold border border-yellow-200"
+                        className="w-full flex items-center justify-center px-6 py-4 bg-white border-2 border-gray-200 hover:border-gray-300 text-gray-700 hover:text-gray-900 rounded-xl font-semibold transition-colors"
                       >
                         <Star className="w-5 h-5 mr-3" />
                         Gói dịch vụ
@@ -745,7 +954,7 @@ export default function Profile() {
                       
                       <button 
                         onClick={() => navigate('/notifications')}
-                        className="w-full flex items-center justify-center px-6 py-4 btn-premium bg-blue-50 hover:bg-blue-100 text-blue-700 hover:text-blue-800 font-semibold border border-blue-200"
+                        className="w-full flex items-center justify-center px-6 py-4 bg-white border-2 border-gray-200 hover:border-gray-300 text-gray-700 hover:text-gray-900 rounded-xl font-semibold transition-colors"
                       >
                         <CheckCircle className="w-5 h-5 mr-3" />
                         Thông báo
@@ -756,19 +965,23 @@ export default function Profile() {
 
                 {/* Buyer Upgrade */}
                 {user?.role === 'Buyer' && (
-                  <div className="glass-card p-6 fade-up fade-up--delay-3">
-                    <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-                      <div className="icon-container icon-container--emerald mr-3">
-                        <TrendingUp className="w-4 h-4 text-white" />
-                      </div>
+                  <div className={`${tierStyle.cardBg} rounded-2xl ${tierStyle.cardShadow} border-2 ${tierStyle.cardBorder} p-6 fade-up fade-up--delay-3`}>
+                    <h3 className={`text-xl font-bold ${tierStyle.textPrimary} mb-6 flex items-center`}>
+                      <TrendingUp className={`w-5 h-5 mr-3 ${
+                        packageTier === 'PREMIUM' 
+                          ? 'text-yellow-600' 
+                          : packageTier === 'PRO'
+                            ? 'text-blue-600'
+                            : 'text-gray-600'
+                      }`} />
                       Nâng cấp tài khoản
                     </h3>
                     <button 
                       onClick={handleSellerUpgrade}
-                      className={`w-full flex items-center justify-center px-6 py-4 btn-premium font-semibold ${
+                      className={`w-full flex items-center justify-center px-6 py-4 rounded-xl font-semibold transition-colors ${
                         hasActiveUpgradeRequest 
-                          ? 'bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700 border border-blue-200' 
-                          : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600 hover:text-emerald-700 border border-emerald-200'
+                          ? 'bg-white border-2 border-blue-200 hover:border-blue-300 text-blue-600 hover:text-blue-700' 
+                          : `${tierStyle.buttonPrimary} text-white shadow-sm hover:shadow-md`
                       }`}
                     >
                       {hasActiveUpgradeRequest ? <FileText className="w-5 h-5 mr-3" /> : <TrendingUp className="w-5 h-5 mr-3" />}
@@ -778,17 +991,21 @@ export default function Profile() {
                 )}
 
                 {/* Navigation */}
-                <div className="glass-card p-6 fade-up fade-up--delay-4">
-                  <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
-                    <div className="icon-container icon-container--indigo mr-3">
-                      <ArrowLeft className="w-4 h-4 text-white" />
-                    </div>
+                <div className={`${tierStyle.cardBg} rounded-2xl ${tierStyle.cardShadow} border-2 ${tierStyle.cardBorder} p-6 fade-up fade-up--delay-4`}>
+                  <h3 className={`text-lg font-bold ${tierStyle.textPrimary} mb-4 flex items-center`}>
+                    <ArrowLeft className={`w-5 h-5 mr-3 ${
+                      packageTier === 'PREMIUM' 
+                        ? 'text-yellow-600' 
+                        : packageTier === 'PRO'
+                          ? 'text-blue-600'
+                          : 'text-gray-600'
+                    }`} />
                     Điều hướng
                   </h3>
                   <div className="space-y-3">
                     <button 
                       onClick={() => navigate('/')}
-                      className="w-full flex items-center justify-center px-6 py-3 btn-premium bg-gray-50 hover:bg-gray-100 text-gray-700 hover:text-gray-900 font-medium"
+                      className="w-full flex items-center justify-center px-6 py-3 bg-white border-2 border-gray-200 hover:border-gray-300 text-gray-700 hover:text-gray-900 rounded-xl font-medium transition-colors"
                     >
                       <ArrowLeft className="w-4 h-4 mr-2" />
                       Trang chủ
@@ -796,7 +1013,7 @@ export default function Profile() {
                     
                     <button 
                       onClick={() => navigate('/properties')}
-                      className="w-full flex items-center justify-center px-6 py-3 btn-premium bg-indigo-50 hover:bg-indigo-100 text-indigo-700 hover:text-indigo-800 font-medium"
+                      className="w-full flex items-center justify-center px-6 py-3 bg-white border-2 border-gray-200 hover:border-gray-300 text-gray-700 hover:text-gray-900 rounded-xl font-medium transition-colors"
                     >
                       <Building className="w-4 h-4 mr-2" />
                       Bất động sản

@@ -109,7 +109,12 @@ export default function TestLab() {
         price: formData.price ? parseInt(formData.price) : null
       });
 
-      setMarketAnalysisResult(result);
+      // Backend returns: { success: true, data: { valuation, pros, cons } }
+      if (result.success && result.data) {
+        setMarketAnalysisResult(result.data);
+      } else {
+        throw new Error(result.message || 'Không nhận được kết quả phân tích từ AI');
+      }
     } catch (err) {
       console.error('Market analysis error:', err);
       setError({
@@ -145,7 +150,12 @@ export default function TestLab() {
         features: ['đầy đủ tiện ích']
       });
 
-      setDescriptionResult(result);
+      // Backend returns: { success: true, description: "..." }
+      if (result.success && result.description) {
+        setDescriptionResult(result.description);
+      } else {
+        throw new Error(result.message || 'Không nhận được mô tả từ AI');
+      }
     } catch (err) {
       console.error('Generate description error:', err);
       setError({

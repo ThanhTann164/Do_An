@@ -391,12 +391,36 @@ const formatPrice = (price) => {
                     const imgObj = property.houseimages?.find(i => i.IsCover) || property.houseimages?.[0];
                     const imageUrl = getDriveViewUrl(imgObj) || '/images/img_1.jpg';
                     const id = property.HouseID || property.id;
+                    const packageType = property.packageType || 'FREE';
+                    const isPremium = packageType === 'PREMIUM';
+                    const isPro = packageType === 'PRO';
+                    
                     return (
                       <div 
                         key={id} 
-                        className="group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-400 hover:scale-102 animate-fade-in-up"
+                        className={`group rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-400 hover:scale-102 animate-fade-in-up relative ${
+                          isPremium 
+                            ? 'bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-400 shadow-yellow-200' 
+                            : isPro 
+                              ? 'bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-400 shadow-blue-200'
+                              : 'bg-white border border-gray-200'
+                        }`}
                         style={{ animationDelay: `${index * 80}ms` }}
                       >
+                        {/* Premium/Pro Badge */}
+                        {isPremium && (
+                          <div className="absolute top-3 right-3 z-10 bg-gradient-to-r from-yellow-400 to-orange-400 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
+                            <span>🔥</span>
+                            <span>Nổi bật</span>
+                          </div>
+                        )}
+                        {isPro && !isPremium && (
+                          <div className="absolute top-3 right-3 z-10 bg-gradient-to-r from-blue-400 to-indigo-400 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
+                            <span>⭐</span>
+                            <span>Uy tín</span>
+                          </div>
+                        )}
+                        
                         {/* Compact Property Image */}
                         <Link 
                           to={`/property/${id}`} 
@@ -416,11 +440,25 @@ const formatPrice = (price) => {
                         {/* Compact Property Content */}
                         <div className="p-4">
                           <div className="mb-3">
-                            <div className="text-lg font-bold text-[#006d5b] mb-1">
+                            <div className={`text-lg font-bold mb-1 ${
+                              isPremium 
+                                ? 'text-yellow-700' 
+                                : isPro 
+                                  ? 'text-blue-700'
+                                  : 'text-[#006d5b]'
+                            }`}>
                               {formatPrice(property.Price)}
                             </div>
                             <p className="text-xs text-gray-600 mb-1 line-clamp-1">{property.Address}</p>
-                            <p className="text-sm font-semibold text-gray-900 line-clamp-1">{property.City}</p>
+                            <p className={`text-sm font-semibold line-clamp-1 ${
+                              isPremium 
+                                ? 'text-gray-900' 
+                                : isPro 
+                                  ? 'text-gray-900'
+                                  : 'text-gray-900'
+                            }`}>
+                              {property.City}
+                            </p>
                           </div>
                           
                           {/* Compact Property Specs */}

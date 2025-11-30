@@ -62,5 +62,3 @@ FE/src/pages/*Test*.jsx
 FE/src/components/*Debug*.jsx
 FE/src/main-test.jsx
 FE/public/test*.html
-# Exception: TestLab.jsx is useful for development
-!FE/src/pages/TestLab.jsx

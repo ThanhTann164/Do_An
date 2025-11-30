@@ -19,7 +19,9 @@ const PaymentPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [packageData, setPackageData] = useState(null);
-  const [paymentMethod, setPaymentMethod] = useState('momo');
+  // Get gateway from URL params, default to 'momo'
+  const gatewayFromUrl = searchParams.get('gateway');
+  const [paymentMethod, setPaymentMethod] = useState(gatewayFromUrl || 'momo');
   const [isProcessing, setIsProcessing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -27,7 +29,11 @@ const PaymentPage = () => {
   // --- Load package info ---
   useEffect(() => {
     loadPackageData();
-  }, []);
+    // Update payment method if gateway is provided in URL
+    if (gatewayFromUrl) {
+      setPaymentMethod(gatewayFromUrl);
+    }
+  }, [gatewayFromUrl]);
 
   const loadPackageData = async () => {
     try {

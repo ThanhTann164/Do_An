@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "main": "BE/app.js",
   "scripts": {
-    "start": "cross-env PORT=3002 node BE/app.js",
-    "dev": "cross-env PORT=3002 nodemon BE/app.js",
+    "start": "node BE/app.js",
+    "dev": "nodemon BE/app.js",
     "seed": "node BE/scripts/seedDashboardDataSimple.js",
     "seed-dashboard": "node BE/scripts/seedDashboardDataSimple.js"
   },
@@ -13,7 +13,6 @@
   "license": "ISC",
   "description": "Home X",
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
     "@react-oauth/google": "^0.12.1",
     "axios": "^1.12.2",
     "bcrypt": "^6.0.0",
@@ -31,6 +30,7 @@
     "mysql2": "^3.15.0",
     "node-fetch": "^3.3.2",
     "nodemailer": "^7.0.6",
+    "openai": "^6.9.1",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "sequelize": "^6.37.7",
@@ -40,7 +40,6 @@
   },
   "devDependencies": {
     "@faker-js/faker": "^10.1.0",
-    "cross-env": "^10.1.0",
     "nodemon": "^3.1.10",
     "sequelize-auto": "^0.8.8"
   }

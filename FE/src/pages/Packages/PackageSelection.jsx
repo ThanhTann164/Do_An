@@ -611,30 +611,10 @@ const PackageSelection = () => {
                 <button
                   type="button"
                   disabled={isCreatingPayment}
-                  onClick={async () => {
+                  onClick={() => {
                     if (!selectedPackage) return;
-                    setIsCreatingPayment(true);
-                    try {
-                      const response = await paymentService.createPayment(
-                        selectedGateway,
-                        selectedPackage.type
-                      );
-                      const paymentUrl = response?.data?.paymentUrl || response?.paymentUrl;
-                      if (paymentUrl) {
-                        window.location.href = paymentUrl;
-                      } else {
-                        throw new Error('Không nhận được URL thanh toán');
-                      }
-                    } catch (err) {
-                      console.error('Create payment error:', err);
-                      alert(
-                        err?.response?.data?.message ||
-                          err?.message ||
-                          'Không thể tạo thanh toán. Vui lòng thử lại.'
-                      );
-                    } finally {
-                      setIsCreatingPayment(false);
-                    }
+                    // Navigate to payment page instead of creating payment directly
+                    navigate(`/package/payment?package_id=${selectedPackage.id}&gateway=${selectedGateway}`);
                   }}
                   className={`
                     flex-1 py-3 px-4 rounded-xl text-white text-sm font-semibold
@@ -643,7 +623,7 @@ const PackageSelection = () => {
                     disabled:opacity-60 disabled:cursor-not-allowed
                   `}
                 >
-                  {isCreatingPayment ? 'Đang tạo thanh toán...' : 'Tiếp tục thanh toán'}
+                  Tiếp tục thanh toán
                 </button>
               </div>
             </div>
