@@ -69,6 +69,9 @@ import PaymentStatus from "./pages/PaymentStatus.jsx";
 
 // Removed duplicate imports - already imported above
 
+// Test Lab (Development)
+import TestLab from "./pages/TestLab.jsx";
+
 // Protected Route Component
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import VerifyOtp from "./pages/VerifyOtp.jsx";
@@ -110,6 +113,9 @@ export default function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/verify-otp" element={<VerifyOtp />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          
+          {/* Development/Test Routes */}
+          <Route path="/test-lab" element={<TestLab />} />
           
           {/* User Routes - Requires Authentication */}
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
