@@ -5,13 +5,13 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 5173,
-    strictPort: true,
+    port: 3001,
+    strictPort: false, // Allow port fallback if 3001 is busy
     host: true,
     proxy: {
       '/api': {
-        // Backend server runs on 3000 by default (see BE/app.js). Update proxy to match.
-        target: 'http://localhost:3001',
+        // Backend server runs on 3002 when frontend uses 3001
+        target: 'http://localhost:3002',
         changeOrigin: true,
         secure: false,
       }
