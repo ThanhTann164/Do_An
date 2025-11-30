@@ -3,12 +3,29 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 // Initialize Google Gemini AI
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
 
+console.log('🔑 [AI Controller] GEMINI_API_KEY check:', {
+  hasKey: !!GEMINI_API_KEY,
+  keyLength: GEMINI_API_KEY ? GEMINI_API_KEY.length : 0,
+  keyPrefix: GEMINI_API_KEY ? GEMINI_API_KEY.substring(0, 10) + '...' : 'N/A',
+  fromEnv: {
+    GEMINI_API_KEY: !!process.env.GEMINI_API_KEY,
+    GOOGLE_AI_API_KEY: !!process.env.GOOGLE_AI_API_KEY
+  }
+});
+
 if (!GEMINI_API_KEY) {
-  console.warn('⚠️  Warning: GEMINI_API_KEY or GOOGLE_AI_API_KEY not found in environment variables');
+  console.error('❌ [AI Controller] GEMINI_API_KEY or GOOGLE_AI_API_KEY not found in environment variables');
+  console.error('❌ [AI Controller] Available env vars:', Object.keys(process.env).filter(k => k.includes('GEMINI') || k.includes('GOOGLE_AI')));
 }
 
 const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 const model = genAI ? genAI.getGenerativeModel({ model: 'gemini-1.5-flash' }) : null;
+
+console.log('🤖 [AI Controller] Gemini initialization:', {
+  hasGenAI: !!genAI,
+  hasModel: !!model,
+  modelName: model ? 'gemini-1.5-flash' : 'N/A'
+});
 
 class AIController {
   /**
