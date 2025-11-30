@@ -431,7 +431,7 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 // ========== SERVER STARTUP ==========
-const PORT = process.env.PORT || 3001; // Fixed: Should be 3001, not 3000
+const PORT = process.env.PORT || 3002; // Backend runs on 3002, Frontend on 3001
 
 server.listen(PORT, function() {
     console.log('🏠 Real Estate Server with MVC Architecture');
