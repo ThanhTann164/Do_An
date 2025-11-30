@@ -10,3 +10,48 @@ config.env
 # Google credentials (chứa secret, không được commit)
 **/credentials.json
 BE/Config/credentials.json
+
+# Test & Debug files (không cần thiết cho production)
+test-*.html
+test-*.js
+debug-*.html
+debug-*.js
+quick-fix.html
+fix-token.html
+check-accounts.js
+check-packages-data.sql
+update-token.js
+test-db-connection.js
+test-api-my-package.js
+
+# Simple/Development files
+simple-server.js
+index-simple.html
+FE/test.html
+FE/index-simple.html
+
+# Uploads & Generated files
+BE/uploads/
+FE/dist/
+*.log
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# Duplicate models folder (use BE/models instead)
+models/
