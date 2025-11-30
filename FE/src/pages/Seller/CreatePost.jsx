@@ -570,19 +570,21 @@ export default function CreatePost() {
                         <div className="d-flex justify-content-between align-items-center mb-2">
                           <label className="form-label mb-0">Mô tả</label>
                           
-                          {/* AI Description Generation Button - New Gemini API - PREMIUM only */}
+                          {/* AI Description Buttons - PREMIUM only */}
                           {authUser?.currentPackage?.name === 'PREMIUM' && (
-                            <button
-                              type="button"
-                              className="btn btn-sm"
-                              style={{
-                                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                                color: 'white',
-                                border: 'none',
-                                fontWeight: '600',
-                                boxShadow: '0 4px 6px rgba(102, 126, 234, 0.3)'
-                              }}
-                              disabled={aiLoading.description || !formData.address || !formData.propertyType || !formData.area}
+                            <div className="d-flex gap-2">
+                              {/* Generate New Description */}
+                              <button
+                                type="button"
+                                className="btn btn-sm"
+                                style={{
+                                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                  color: 'white',
+                                  border: 'none',
+                                  fontWeight: '600',
+                                  boxShadow: '0 4px 6px rgba(102, 126, 234, 0.3)'
+                                }}
+                                disabled={aiLoading.description || !formData.address || !formData.propertyType || !formData.area}
                             onClick={async () => {
                               if (!formData.address || !formData.propertyType || !formData.area) {
                                 alert('Vui lòng điền đầy đủ: Địa chỉ, Loại nhà, Diện tích');
@@ -633,7 +635,55 @@ export default function CreatePost() {
                               ) : (
                                 '✨ AI Viết Mô Tả'
                               )}
-                            </button>
+                              </button>
+                              
+                              {/* Optimize Existing Description */}
+                              {formData.description && (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline-primary"
+                                  disabled={aiLoading.description || !formData.propertyType || !formData.city}
+                                  onClick={async () => {
+                                    if (!formData.propertyType || !formData.city) {
+                                      alert('Vui lòng điền đầy đủ: Loại nhà, Tỉnh/Thành phố');
+                                      return;
+                                    }
+                                    try {
+                                      setAiLoading(prev => ({ ...prev, description: true }));
+                                      
+                                      // Build location string
+                                      const location = [formData.ward, formData.district, formData.city]
+                                        .filter(Boolean)
+                                        .join(', ') || formData.address;
+                                      
+                                      const result = await aiService.optimizeDescription({
+                                        raw_description: formData.description,
+                                        house_type: formData.propertyType,
+                                        location: location,
+                                        price: formData.price ? parseInt(formData.price) : null,
+                                        bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : null,
+                                        bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : null
+                                      });
+                                      
+                                      if (result.success && result.data?.optimized_description) {
+                                        setFormData(prev => ({ ...prev, description: result.data.optimized_description }));
+                                        alert('✨ AI đã tối ưu mô tả thành công!');
+                                      } else {
+                                        alert(result.message || 'Có lỗi xảy ra khi tối ưu mô tả');
+                                      }
+                                    } catch (error) {
+                                      console.error('AI optimize description error:', error);
+                                      const errorMsg = error.response?.data?.message || error.message || 'Có lỗi xảy ra';
+                                      alert(`❌ ${errorMsg}`);
+                                    } finally {
+                                      setAiLoading(prev => ({ ...prev, description: false }));
+                                    }
+                                  }}
+                                >
+                                  {aiLoading.description ? '⏳...' : '✨ Tối ưu mô tả'}
+                                </button>
+                              )}
+                            </div>
                           )}
                         </div>
                         <textarea

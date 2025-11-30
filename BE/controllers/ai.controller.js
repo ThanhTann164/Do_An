@@ -197,6 +197,172 @@ Chỉ trả về JSON, không có text nào khác.`;
       });
     }
   }
+
+  /**
+   * Optimize title using Google Gemini
+   * POST /api/ai/optimize-title
+   */
+  static async optimizeTitle(req, res) {
+    try {
+      // Check if Gemini is configured
+      if (!model) {
+        return res.status(500).json({
+          success: false,
+          message: 'AI service is not configured. Please set GEMINI_API_KEY in environment variables.'
+        });
+      }
+
+      // Get input from request body
+      const { title, house_type, price, location } = req.body;
+
+      // Validation
+      if (!title) {
+        return res.status(400).json({
+          success: false,
+          message: 'title is required'
+        });
+      }
+
+      console.log('✨ [AI] Optimizing title:', { title, house_type, price, location });
+
+      // Format price if available
+      const priceText = price 
+        ? price >= 1000000000 
+          ? `${(price / 1000000000).toFixed(1)} tỷ VND`
+          : `${(price / 1000000).toFixed(0)} triệu VND`
+        : '';
+
+      // Build context
+      let context = '';
+      if (house_type) context += `Loại: ${house_type}. `;
+      if (location) context += `Vị trí: ${location}. `;
+      if (priceText) context += `Giá: ${priceText}. `;
+
+      // Build prompt
+      const prompt = `Đóng vai chuyên gia bất động sản Việt Nam. Tối ưu tiêu đề sau để tăng tỷ lệ click:
+
+Tiêu đề hiện tại: "${title}"
+${context ? `Thông tin bổ sung: ${context}` : ''}
+
+Yêu cầu:
+- Tối ưu tiêu đề để hấp dẫn, thu hút người mua
+- Thêm 1 emoji phù hợp (không quá nhiều)
+- Giữ độ dài dưới 100 ký tự
+- Ngôn ngữ tiếng Việt, chuyên nghiệp
+- Tập trung vào điểm nổi bật
+
+Chỉ trả về tiêu đề đã tối ưu, không có text nào khác.`;
+
+      // Call Gemini API
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      let optimizedTitle = response.text().trim();
+
+      // Clean up response - remove quotes if wrapped
+      optimizedTitle = optimizedTitle.replace(/^["']|["']$/g, '').trim();
+
+      // Ensure it's under 100 chars
+      if (optimizedTitle.length > 100) {
+        optimizedTitle = optimizedTitle.substring(0, 97) + '...';
+      }
+
+      console.log('✅ [AI] Title optimized successfully');
+
+      // Return response
+      return res.json({
+        success: true,
+        data: {
+          optimized_title: optimizedTitle,
+          original_title: title
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ [AI] Error optimizing title:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Lỗi khi tối ưu tiêu đề. Vui lòng thử lại sau.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
+
+  /**
+   * Optimize description using Google Gemini
+   * POST /api/ai/optimize-description
+   */
+  static async optimizeDescription(req, res) {
+    try {
+      // Check if Gemini is configured
+      if (!model) {
+        return res.status(500).json({
+          success: false,
+          message: 'AI service is not configured. Please set GEMINI_API_KEY in environment variables.'
+        });
+      }
+
+      // Get input from request body
+      const { raw_description, house_type, price, location, bedrooms, bathrooms } = req.body;
+
+      // Validation
+      if (!house_type || !location) {
+        return res.status(400).json({
+          success: false,
+          message: 'house_type and location are required'
+        });
+      }
+
+      console.log('📝 [AI] Optimizing description:', { house_type, price, location, bedrooms, bathrooms });
+
+      // Format price
+      const priceText = price 
+        ? price >= 1000000000 
+          ? `${(price / 1000000000).toFixed(1)} tỷ VND`
+          : `${(price / 1000000).toFixed(0)} triệu VND`
+        : 'liên hệ';
+
+      // Build prompt
+      const prompt = `Viết một mô tả bất động sản chuyên nghiệp bằng tiếng Việt dựa trên thông tin sau:
+
+- Loại bất động sản: ${house_type}
+- Vị trí: ${location}
+- Giá: ${priceText}
+${bedrooms ? `- Số phòng ngủ: ${bedrooms}` : ''}
+${bathrooms ? `- Số phòng tắm: ${bathrooms}` : ''}
+${raw_description ? `- Mô tả hiện tại (tham khảo): ${raw_description}` : ''}
+
+Yêu cầu:
+- Viết mô tả chuyên nghiệp, hấp dẫn
+- Độ dài khoảng 200-300 từ
+- Tập trung vào điểm nổi bật và lợi ích
+- Ngôn ngữ tiếng Việt, tự nhiên
+- Không sử dụng markdown, chỉ trả về đoạn văn thuần túy`;
+
+      // Call Gemini API
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const optimizedDescription = response.text().trim();
+
+      console.log('✅ [AI] Description optimized successfully');
+
+      // Return response
+      return res.json({
+        success: true,
+        data: {
+          optimized_description: optimizedDescription,
+          original_description: raw_description || ''
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ [AI] Error optimizing description:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Lỗi khi tối ưu mô tả. Vui lòng thử lại sau.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
 }
 
 module.exports = AIController;
