@@ -28,3 +28,5 @@ CREATE TABLE IF NOT EXISTS favorites (
 SELECT 'Favorites table created successfully!' as message;
 
 
+
+

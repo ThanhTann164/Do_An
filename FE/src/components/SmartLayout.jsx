@@ -16,3 +16,5 @@ export default function SmartLayout({ children, showNavbar = true, showFooter = 
 }
 
 
+
+

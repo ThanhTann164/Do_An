@@ -111,13 +111,21 @@ class PackageController {
   // GET /api/packages/my-package - Lấy gói hiện tại của user
   static async getMyPackage(req, res, next) {
     try {
+      console.log('[PackageController] Request user object:', {
+        hasUser: !!req.user,
+        userId: req.user?.userId,
+        id: req.user?.id,
+        userObject: req.user ? Object.keys(req.user) : 'NO USER'
+      });
+      
       const userId = req.user.userId || req.user.id;
       if (!userId) {
+        console.error('[PackageController] No userId found in req.user');
         return res.status(401).json({ message: 'Unauthorized' });
       }
 
       const role = getRequestRole(req);
-      console.log('[PackageController] GET /api/packages/my-package', { userId, role });
+      console.log('[PackageController] GET /api/packages/my-package', { userId, role, userEmail: req.user?.email || req.user?.Email });
 
       if (!isSellerRole(role)) {
         console.log('[PackageController] Non-seller detected, skip package fetch');
@@ -147,6 +155,17 @@ class PackageController {
       }
 
       const userPackageDetails = await PackageMiddleware.getUserPackage(userId, role);
+      console.log('[PackageController] getUserPackage result:', userPackageDetails ? 'NOT NULL' : 'NULL');
+      if (userPackageDetails) {
+        console.log('[PackageController] Package details:', {
+          name: userPackageDetails.name,
+          display_name: userPackageDetails.display_name,
+          is_free: userPackageDetails.is_free,
+          has_rules: !!userPackageDetails.rules,
+          ai_tools: userPackageDetails.ai_tools || []
+        });
+      }
+      
       if (!userPackageDetails) {
         console.log('[PackageController] PackageMiddleware returned null, fallback FREE');
         return res.json({
@@ -157,7 +176,21 @@ class PackageController {
       }
 
       const formatted = formatPackagePayload(userPackageDetails);
+      console.log('[PackageController] formatPackagePayload result:', formatted ? 'NOT NULL' : 'NULL');
+      if (formatted) {
+        console.log('[PackageController] Formatted package:', {
+          userPackage_name: formatted.userPackage?.name,
+          has_rules: !!formatted.rules,
+          has_features: !!formatted.features
+        });
+      }
+      
       const normalizedName = (formatted?.userPackage?.name || formatted?.name || userPackageDetails.name || 'FREE').toUpperCase();
+      console.log('[PackageController] Final response:', {
+        packageName: normalizedName,
+        isFree: normalizedName === 'FREE',
+        hasRaw: !!formatted
+      });
 
       return res.json({
         packageName: normalizedName,

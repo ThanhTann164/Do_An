@@ -62,3 +62,5 @@ router.get('/posts', authMiddleware, getSellerPosts);
 
 module.exports = router;
 
+
+

@@ -13,6 +13,7 @@
   "license": "ISC",
   "description": "Home X",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@react-oauth/google": "^0.12.1",
     "axios": "^1.12.2",
     "bcrypt": "^6.0.0",

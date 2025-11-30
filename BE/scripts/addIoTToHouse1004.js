@@ -82,3 +82,5 @@ async function addIoTToHouse1004() {
 // Chạy script
 addIoTToHouse1004();
 
+
+

@@ -123,6 +123,8 @@ app.use("/api/seller-upgrade", sellerUpgradeRoutes);
 // API cung cấp thông tin user từ JWT cookie/header để FE hiển thị (đặt TRƯỚC role-based routes)
 const jwt = require('jsonwebtoken');
 const { QueryTypes } = require('sequelize');
+const { isSellerRole } = require('./Utils/roleUtils');
+const PackageMiddleware = require('./Middlewares/packageMiddleware');
 
 app.get('/api/user', async (req, res) => {
     const authHeader = req.headers['authorization'] || req.get('Authorization');
@@ -156,6 +158,7 @@ app.get('/api/user', async (req, res) => {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
 
+        const row = rows[0];
         console.log('✅ [/api/user] Raw database row:', row);
         console.log('✅ [/api/user] AvatarUrl from DB:', row.AvatarUrl);
         
@@ -182,13 +185,71 @@ app.get('/api/user', async (req, res) => {
             freshUser.avatarUrl = `${freshUser.avatarUrl}?t=${Date.now()}`;
         }
 
+        // Lấy thông tin active package nếu user là Seller
+        let currentPackage = null;
+        if (isSellerRole(row.Role)) {
+            try {
+                // Check and update expired packages first
+                await PackageMiddleware.checkAndUpdateExpiredPackage(userId);
+                
+                const userPackage = await PackageMiddleware.getUserPackage(userId);
+                
+                // Ensure package name is uppercase
+                const packageName = userPackage?.name ? userPackage.name.toUpperCase() : 'FREE';
+                
+                if (userPackage && !userPackage.is_free && packageName !== 'FREE') {
+                    currentPackage = {
+                        name: packageName, // PREMIUM, PRO, or FREE
+                        displayName: userPackage.display_name || (packageName === 'PREMIUM' ? 'Gói Premium' : packageName === 'PRO' ? 'Gói Pro' : 'Gói Miễn Phí'),
+                        isFree: false,
+                        expiresAt: userPackage.expires_at,
+                        packageName: packageName // Alias for compatibility
+                    };
+                } else {
+                    currentPackage = {
+                        name: 'FREE',
+                        displayName: 'Gói Miễn Phí',
+                        isFree: true,
+                        expiresAt: null,
+                        packageName: 'FREE'
+                    };
+                }
+                
+                console.log('✅ [/api/user] Package info:', {
+                    packageName: packageName,
+                    isFree: userPackage?.is_free,
+                    expiresAt: userPackage?.expires_at
+                });
+            } catch (packageError) {
+                console.error('[/api/user] Error fetching package:', packageError);
+                // Nếu có lỗi, set default FREE package
+                currentPackage = {
+                    name: 'FREE',
+                    displayName: 'Gói Miễn Phí',
+                    isFree: true,
+                    expiresAt: null,
+                    packageName: 'FREE'
+                };
+            }
+        }
+
+        // Thêm currentPackage vào user object
+        if (currentPackage) {
+            freshUser.currentPackage = currentPackage;
+        }
+
         console.log('✅ [/api/user] Returning user data:', {
             userId: freshUser.userId,
             fullName: freshUser.fullName,
             role: freshUser.role,
             email: freshUser.email,
-            avatarUrl: freshUser.avatarUrl
+            avatarUrl: freshUser.avatarUrl,
+            currentPackage: currentPackage ? currentPackage.name : 'N/A'
         });
+        
+        // Debug: Log full response structure
+        console.log('🔍 [BE /api/user] Full user object structure:', JSON.stringify(freshUser, null, 2));
+        console.log('🔍 [BE /api/user] currentPackage structure:', JSON.stringify(currentPackage, null, 2));
 
         res.json({ success: true, user: freshUser, data: freshUser });
     } catch (err) {

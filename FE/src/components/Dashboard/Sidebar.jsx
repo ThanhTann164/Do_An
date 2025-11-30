@@ -13,6 +13,16 @@ import { Link, useLocation } from 'react-router-dom';
 
 const Sidebar = ({ isOpen, onClose, user }) => {
   const location = useLocation();
+  
+  // Debug: Log user data structure
+  React.useEffect(() => {
+    console.log('🔍 [Sidebar] User Data in FE:', user);
+    console.log('🔍 [Sidebar] User structure keys:', user ? Object.keys(user) : 'null');
+    console.log('🔍 [Sidebar] User.currentPackage:', user?.currentPackage);
+    console.log('🔍 [Sidebar] User.UserPackages:', user?.UserPackages);
+    console.log('🔍 [Sidebar] User.userpackages:', user?.userpackages);
+    console.log('🔍 [Sidebar] User.package:', user?.package);
+  }, [user]);
 
   const menuItems = [
     {
@@ -20,6 +30,12 @@ const Sidebar = ({ isOpen, onClose, user }) => {
       label: 'Tổng quan',
       icon: Home,
       path: '/seller/dashboard?tab=overview'
+    },
+    {
+      id: 'market-analysis',
+      label: 'Phân tích thị trường',
+      icon: BarChart3,
+      path: '/seller/market-analysis'
     },
     {
       id: 'iot',
@@ -42,6 +58,9 @@ const Sidebar = ({ isOpen, onClose, user }) => {
   ];
 
   const isActiveTab = (tabId) => {
+    if (tabId === 'market-analysis') {
+      return location.pathname === '/seller/market-analysis';
+    }
     const urlParams = new URLSearchParams(location.search);
     const currentTab = urlParams.get('tab') || 'overview';
     return currentTab === tabId;

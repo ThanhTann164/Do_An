@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { CheckCircle, Home, Receipt, ArrowRight, Crown, Sparkles } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 import { usePackage } from '../../hooks/usePackage';
 
 const PaymentSuccess = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const location = useLocation();
+  const { refreshProfile } = useAuth(); // Sử dụng refreshProfile từ AuthContext
   const { refreshPackageData } = usePackage();
   
   const [paymentInfo, setPaymentInfo] = useState(null);
@@ -43,8 +45,21 @@ const PaymentSuccess = () => {
     // Show animation
     setTimeout(() => setShowAnimation(true), 100);
 
-    // Refresh package data
-    refreshPackageData();
+    // Refresh user profile và package data sau khi thanh toán thành công
+    const refreshData = async () => {
+      try {
+        console.log('🔄 [PaymentSuccess] Refreshing user profile and package data...');
+        // Refresh user profile từ API (bao gồm currentPackage)
+        await refreshProfile();
+        // Cũng refresh package data từ hook
+        await refreshPackageData();
+        console.log('✅ [PaymentSuccess] Data refreshed successfully');
+      } catch (error) {
+        console.error('❌ [PaymentSuccess] Error refreshing data:', error);
+      }
+    };
+    
+    refreshData();
 
     // Auto redirect countdown
     const timer = setInterval(() => {

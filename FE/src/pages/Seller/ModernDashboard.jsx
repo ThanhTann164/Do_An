@@ -11,11 +11,11 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 
 // Components
-import DashboardLayout from '../../components/dashboard/DashboardLayout';
-import SellerInfoCard from '../../components/dashboard/SellerInfoCard';
-import StatsCard from '../../components/dashboard/StatsCard';
-import PropertyListCard from '../../components/dashboard/PropertyListCard';
-import NotificationCard from '../../components/dashboard/NotificationCard';
+import DashboardLayout from '../../components/Dashboard/DashboardLayout';
+import SellerInfoCard from '../../components/Dashboard/SellerInfoCard';
+import StatsCard from '../../components/Dashboard/StatsCard';
+import PropertyListCard from '../../components/Dashboard/PropertyListCard';
+import NotificationCard from '../../components/Dashboard/NotificationCard';
 import PackageCard from '../../components/Dashboard/PackageCard';
 
 // Services

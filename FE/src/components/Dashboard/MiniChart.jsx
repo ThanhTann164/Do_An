@@ -89,3 +89,5 @@ const MiniChart = ({ data, color = '#3b82f6', height = 60 }) => {
 export default MiniChart;
 
 
+
+

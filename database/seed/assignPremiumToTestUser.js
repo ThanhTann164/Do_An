@@ -37,3 +37,5 @@ const assignPackage = async (email, packageName) => {
 
 assignPackage('premium_test@example.com', 'PREMIUM');
 
+
+

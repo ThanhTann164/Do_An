@@ -7,3 +7,5 @@ ADD COLUMN Website VARCHAR(255) NULL COMMENT 'Website cá nhân',
 ADD COLUMN Bio TEXT NULL COMMENT 'Ghi chú cá nhân';
 
 
+
+

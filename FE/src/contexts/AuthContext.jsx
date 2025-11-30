@@ -94,6 +94,142 @@ export const AuthProvider = ({ children }) => {
 
   const isSellerUser = (targetUser) => isSellerRole(getUserRole(targetUser));
 
+  /**
+   * Normalize user object structure để đảm bảo consistency
+   * Xử lý nhiều cấu trúc response từ backend:
+   * 1. Flat currentPackage (từ API response mới)
+   * 2. Nested UserPackages array (nếu eager load từ Sequelize)
+   * 3. Nested userpackages array (alias)
+   * 
+   * @param {Object} incomingUser - User object từ API
+   * @returns {Object} Normalized user object với flat currentPackage structure
+   */
+  const normalizeUser = useCallback((incomingUser) => {
+    if (!incomingUser) {
+      return null;
+    }
+
+    const normalizedRole = getUserRole(incomingUser);
+    const now = new Date();
+
+    // Base normalized user
+    const normalizedUser = {
+      ...incomingUser,
+      role: incomingUser.role || incomingUser.Role || (normalizedRole ? normalizedRole.charAt(0).toUpperCase() + normalizedRole.slice(1) : '')
+    };
+
+    // 1. Nếu đã có currentPackage từ API (flat structure) - ưu tiên cao nhất
+    if (incomingUser.currentPackage) {
+      // Ensure package name is uppercase
+      const packageName = incomingUser.currentPackage.name 
+        ? incomingUser.currentPackage.name.toUpperCase() 
+        : (incomingUser.currentPackage.packageName 
+          ? incomingUser.currentPackage.packageName.toUpperCase() 
+          : 'FREE');
+      
+      normalizedUser.currentPackage = {
+        ...incomingUser.currentPackage,
+        name: packageName,
+        packageName: packageName, // Ensure both fields are uppercase
+        isFree: packageName === 'FREE'
+      };
+      console.log('✅ [normalizeUser] Using flat currentPackage from API:', normalizedUser.currentPackage);
+    } 
+    // 2. Nếu có UserPackages array (nested structure từ Sequelize eager load)
+    else {
+      const userPackages = incomingUser.UserPackages || incomingUser.userpackages || incomingUser.UserPackage || [];
+      
+      if (Array.isArray(userPackages) && userPackages.length > 0) {
+        console.log('🔍 [normalizeUser] Found UserPackages array, extracting active package...');
+        
+        // Tìm active package: status = 'active' và end_at > now
+        const activePackage = userPackages.find(pkg => {
+          const status = pkg.status || pkg.Status;
+          const endAt = pkg.end_at || pkg.endAt || pkg.endAtDate;
+          
+          if (status?.toLowerCase() !== 'active') {
+            return false;
+          }
+          
+          if (endAt) {
+            const endDate = new Date(endAt);
+            return endDate > now;
+          }
+          
+          // Nếu không có end_at, coi như không hết hạn
+          return true;
+        });
+
+        if (activePackage) {
+          // Extract package name từ Package relation hoặc trực tiếp
+          let packageName = activePackage.Package?.name || 
+                             activePackage.package?.name ||
+                             activePackage.package_name ||
+                             activePackage.PackageName ||
+                             activePackage.name ||
+                             'FREE';
+
+          // Ensure uppercase
+          packageName = packageName.toUpperCase();
+
+          const displayName = activePackage.Package?.display_name ||
+                             activePackage.package?.display_name ||
+                             activePackage.display_name ||
+                             (packageName === 'PREMIUM' ? 'Gói Premium' : 
+                              packageName === 'PRO' ? 'Gói Pro' : 'Gói Miễn Phí');
+
+          // Tạo flat currentPackage structure
+          normalizedUser.currentPackage = {
+            name: packageName, // PREMIUM, PRO, or FREE (uppercase)
+            displayName: displayName,
+            isFree: packageName === 'FREE',
+            expiresAt: activePackage.end_at || activePackage.endAt || activePackage.endAtDate || null,
+            packageName: packageName, // Alias for compatibility (uppercase)
+            packageId: activePackage.package_id || activePackage.packageId || null
+          };
+
+          console.log('✅ [normalizeUser] Extracted currentPackage from UserPackages:', normalizedUser.currentPackage);
+        } else {
+          // Không tìm thấy active package, set FREE
+          normalizedUser.currentPackage = {
+            name: 'FREE',
+            displayName: 'Gói Miễn Phí',
+            isFree: true,
+            expiresAt: null,
+            packageName: 'FREE',
+            packageId: null
+          };
+          console.log('⚠️ [normalizeUser] No active package found, defaulting to FREE');
+        }
+      }
+      // 3. Nếu không có UserPackages và không có currentPackage, set FREE
+      else {
+        normalizedUser.currentPackage = {
+          name: 'FREE',
+          displayName: 'Gói Miễn Phí',
+          isFree: true,
+          expiresAt: null,
+          packageName: 'FREE',
+          packageId: null
+        };
+        console.log('⚠️ [normalizeUser] No package data found, defaulting to FREE');
+      }
+    }
+
+    // Remove nested UserPackages để tránh confusion (giữ lại currentPackage flat)
+    if (normalizedUser.UserPackages) {
+      delete normalizedUser.UserPackages;
+    }
+    if (normalizedUser.userpackages) {
+      delete normalizedUser.userpackages;
+    }
+    if (normalizedUser.UserPackage) {
+      delete normalizedUser.UserPackage;
+    }
+
+    return normalizedUser;
+  }, []);
+
   const applyUserState = (incomingUser) => {
     if (!incomingUser) {
       setUser(null);
@@ -101,11 +237,16 @@ export const AuthProvider = ({ children }) => {
       return null;
     }
 
-    const normalizedRole = getUserRole(incomingUser);
-    const normalizedUser = {
-      ...incomingUser,
-      role: incomingUser.role || incomingUser.Role || (normalizedRole ? normalizedRole.charAt(0).toUpperCase() + normalizedRole.slice(1) : '')
-    };
+    // Normalize user object trước khi apply state
+    const normalizedUser = normalizeUser(incomingUser);
+
+    if (!normalizedUser) {
+      setUser(null);
+      clearPackageState();
+      return null;
+    }
+
+    const normalizedRole = getUserRole(normalizedUser);
 
     if (!isSellerRole(normalizedRole)) {
       normalizedUser.package = null;
@@ -113,6 +254,13 @@ export const AuthProvider = ({ children }) => {
     } else if (incomingUser.package) {
       updatePackageState(incomingUser.package);
     }
+
+    console.log('✅ [applyUserState] Final normalized user structure:', {
+      userId: normalizedUser.userId,
+      role: normalizedUser.role,
+      currentPackage: normalizedUser.currentPackage,
+      hasUserPackages: !!(incomingUser.UserPackages || incomingUser.userpackages)
+    });
 
     setUser(normalizedUser);
     return normalizedUser;
@@ -137,43 +285,99 @@ export const AuthProvider = ({ children }) => {
     setPackageSummary(null);
   }, [updatePackageState]);
 
-  // Fetch user info
-  const fetchUserInfo = async () => {
+  // Fetch user info - Luôn fetch từ API để đảm bảo dữ liệu mới nhất
+  const fetchUserInfo = useCallback(async (options = {}) => {
+    const { force = false } = options;
     try {
       const token = localStorage.getItem('token');
       if (!token) {
         setUser(null);
         clearPackageState();
-        setLoading(false);
+        if (!options.silent) {
+          setLoading(false);
+        }
         return null;
       }
 
+      console.log('🔄 [AuthContext] Fetching user info from API...');
       const response = await fetch(`${API_URL}/api/user`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
-        }
+        },
+        cache: force ? 'no-cache' : 'default' // Force refresh nếu cần
       });
 
       if (response.ok) {
         const data = await response.json();
-        const userData = data.user || data.data;
-        return applyUserState(userData);
+        const userData = data.user || data.data || data;
+        
+        console.log('✅ [AuthContext] User data received:', {
+          userId: userData?.userId,
+          role: userData?.role,
+          currentPackage: userData?.currentPackage || data?.currentPackage
+        });
+
+        // Xử lý currentPackage từ root level hoặc user object
+        if (data.currentPackage && !userData.currentPackage) {
+          userData.currentPackage = data.currentPackage;
+        }
+
+        const updatedUser = applyUserState(userData);
+        
+        // Nếu là Seller và có currentPackage, trigger fetch package details
+        if (isSellerRole(getUserRole(updatedUser)) && updatedUser?.currentPackage) {
+          // Fetch package details ngay sau khi có user info
+          setTimeout(() => {
+            fetchMyPackage({ targetUser: updatedUser, silentOnMissingToken: true });
+          }, 100);
+        }
+        
+        return updatedUser;
       }
 
       // Token invalid
+      console.warn('⚠️ [AuthContext] Token invalid, clearing auth state');
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       applyUserState(null);
       return null;
     } catch (error) {
-      console.error('Error fetching user info:', error);
+      console.error('❌ [AuthContext] Error fetching user info:', error);
       applyUserState(null);
+      return null;
+    } finally {
+      if (!options.silent) {
+        setLoading(false);
+      }
+    }
+  }, [clearPackageState, fetchMyPackage]);
+
+  // Refresh profile - Function để gọi từ bất kỳ đâu (như PaymentSuccess)
+  const refreshProfile = useCallback(async () => {
+    console.log('🔄 [AuthContext] Refreshing user profile...');
+    setLoading(true);
+    try {
+      const updatedUser = await fetchUserInfo({ force: true, silent: true });
+      
+      // Nếu là Seller, cũng refresh package
+      if (updatedUser && isSellerRole(getUserRole(updatedUser))) {
+        await fetchMyPackage({ targetUser: updatedUser, silentOnMissingToken: true });
+      }
+      
+      // Trigger refresh event cho các components khác
+      window.dispatchEvent(new Event("package:refresh"));
+      window.dispatchEvent(new Event("user:refresh"));
+      
+      console.log('✅ [AuthContext] Profile refreshed successfully');
+      return updatedUser;
+    } catch (error) {
+      console.error('❌ [AuthContext] Error refreshing profile:', error);
       return null;
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchUserInfo, fetchMyPackage]);
 
   // Fetch package info
   const fetchMyPackage = useCallback(async ({ silentOnMissingToken = false, targetUser = null } = {}) => {
@@ -213,15 +417,24 @@ export const AuthProvider = ({ children }) => {
       console.log('📦 [AuthContext] Package API response status:', response.status);
       const data = await response.json().catch(() => ({}));
       console.log('📦 [AuthContext] Package API response data:', JSON.stringify(data, null, 2));
+      console.log('📦 [AuthContext] Package name from response:', data?.packageName);
+      console.log('📦 [AuthContext] Raw data exists:', !!data?.raw);
+      console.log('📦 [AuthContext] Raw data:', data?.raw);
 
       if (response.ok && data) {
         setPackageSummary(data);
 
         let detail = data?.raw || null;
+        console.log('📦 [AuthContext] Detail before check:', detail);
+        console.log('📦 [AuthContext] Package name check:', data?.packageName, '=== FREE?', data?.packageName === 'FREE');
+        
         if (!detail && data?.packageName === 'FREE') {
+          console.log('📦 [AuthContext] Creating FREE package detail fallback');
           detail = cloneFreePackageDetail();
         }
 
+        console.log('📦 [AuthContext] Final detail:', detail);
+        console.log('📦 [AuthContext] Detail userPackage name:', detail?.userPackage?.name);
         updatePackageState(detail);
         console.log('📦 [AuthContext] Package loaded:', detail?.userPackage?.name || data?.packageName || 'NONE');
         return data;
@@ -372,9 +585,17 @@ export const AuthProvider = ({ children }) => {
     return isPremium;
   };
 
+  // Khởi tạo: Luôn fetch latest user profile từ API khi app khởi động
   useEffect(() => {
-    fetchUserInfo();
-  }, []);
+    const token = localStorage.getItem('token');
+    if (token) {
+      // Luôn fetch từ API, không tin vào localStorage
+      console.log('🚀 [AuthContext] App initialized, fetching latest user profile from API...');
+      fetchUserInfo({ force: true });
+    } else {
+      setLoading(false);
+    }
+  }, []); // Chỉ chạy một lần khi mount
 
   useEffect(() => {
     if (loading) {
@@ -398,6 +619,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     fetchUserInfo,
+    refreshProfile, // Export function để có thể gọi từ PaymentSuccess
     fetchMyPackage,
     hasPackage,
     hasFeature,

@@ -6,6 +6,7 @@ import { PackageContext } from '../../context/PackageContext';
 import provincesData from '../../data/vietnam-provinces.json';
 import { useAuth } from '../../contexts/AuthContext';
 import PackageFeatureGuard from '../../components/PackageFeatureGuard';
+import aiService from '../../services/aiService';
 import { 
   Lightbulb, 
   Lock, 
@@ -42,6 +43,8 @@ export default function CreatePost() {
   });
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [aiLoading, setAiLoading] = useState({ title: false, description: false, marketAnalysis: false });
+  const [marketAnalysisResult, setMarketAnalysisResult] = useState(null);
   
   // State cho địa chỉ
   const [provinces, setProvinces] = useState([]);
@@ -270,9 +273,36 @@ export default function CreatePost() {
                             <button
                               type="button"
                               className="btn btn-sm btn-outline-primary"
-                              onClick={() => alert('AI Title Optimization - Coming Soon!')}
+                              disabled={aiLoading.title || !formData.title}
+                              onClick={async () => {
+                                if (!formData.title) {
+                                  alert('Vui lòng nhập tiêu đề trước khi tối ưu');
+                                  return;
+                                }
+                                try {
+                                  setAiLoading(prev => ({ ...prev, title: true }));
+                                  const result = await aiService.optimizeTitle({
+                                    title: formData.title,
+                                    house_type: formData.propertyType,
+                                    price: formData.price ? parseInt(formData.price) : null,
+                                    location: formData.district ? `${formData.district}, ${formData.city}` : formData.city
+                                  });
+                                  if (result.success && result.data?.optimized_title) {
+                                    setFormData(prev => ({ ...prev, title: result.data.optimized_title }));
+                                    alert('✨ Tối ưu tiêu đề thành công!');
+                                  } else {
+                                    alert(result.message || 'Có lỗi xảy ra khi tối ưu tiêu đề');
+                                  }
+                                } catch (error) {
+                                  console.error('AI optimize title error:', error);
+                                  const errorMsg = error.response?.data?.message || error.message || 'Có lỗi xảy ra';
+                                  alert(`❌ ${errorMsg}`);
+                                } finally {
+                                  setAiLoading(prev => ({ ...prev, title: false }));
+                                }
+                              }}
                             >
-                              ✨ AI Tối ưu tiêu đề
+                              {aiLoading.title ? '⏳ Đang xử lý...' : '✨ AI Tối ưu tiêu đề'}
                             </button>
                           </PackageFeatureGuard>
                         </div>
@@ -385,6 +415,118 @@ export default function CreatePost() {
                           placeholder="5000000000"
                           required
                         />
+                        
+                        {/* AI Market Analysis Section - PREMIUM only */}
+                        {authUser?.currentPackage?.name === 'PREMIUM' && (
+                          <div className="mt-3 p-3 rounded" style={{ 
+                            background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+                            border: '1px solid #e0e0e0'
+                          }}>
+                            <div className="d-flex justify-content-between align-items-center mb-2">
+                              <label className="form-label mb-0 fw-bold">
+                                🤖 AI Định Giá & Phân Tích
+                              </label>
+                              <button
+                              type="button"
+                              className="btn btn-sm"
+                              style={{
+                                background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                                color: 'white',
+                                border: 'none',
+                                fontWeight: '600',
+                                boxShadow: '0 2px 4px rgba(245, 87, 108, 0.3)'
+                              }}
+                              disabled={aiLoading.marketAnalysis || !formData.district || !formData.city || !formData.propertyType || !formData.area}
+                              onClick={async () => {
+                                if (!formData.district || !formData.city || !formData.propertyType || !formData.area) {
+                                  alert('Vui lòng điền đầy đủ: Vị trí, Loại nhà, Diện tích');
+                                  return;
+                                }
+                                try {
+                                  setAiLoading(prev => ({ ...prev, marketAnalysis: true }));
+                                  setMarketAnalysisResult(null);
+                                  
+                                  // Build location string
+                                  const location = [formData.ward, formData.district, formData.city]
+                                    .filter(Boolean)
+                                    .join(', ');
+                                  
+                                  const result = await aiService.analyzeMarketNew({
+                                    location: location,
+                                    price: formData.price ? parseInt(formData.price) : null,
+                                    area: formData.area ? parseFloat(formData.area) : null,
+                                    propertyType: formData.propertyType
+                                  });
+                                  
+                                  if (result.success && result.data) {
+                                    setMarketAnalysisResult(result.data);
+                                  } else {
+                                    alert(result.message || 'Có lỗi xảy ra khi phân tích');
+                                  }
+                                } catch (error) {
+                                  console.error('AI market analysis error:', error);
+                                  const errorMsg = error.response?.data?.message || error.message || 'Có lỗi xảy ra';
+                                  alert(`❌ ${errorMsg}`);
+                                } finally {
+                                  setAiLoading(prev => ({ ...prev, marketAnalysis: false }));
+                                }
+                              }}
+                            >
+                              {aiLoading.marketAnalysis ? (
+                                <>
+                                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                  Đang phân tích...
+                                </>
+                              ) : (
+                                'Phân tích thị trường'
+                              )}
+                            </button>
+                          </div>
+                          
+                          {/* Market Analysis Results */}
+                          {marketAnalysisResult && (
+                            <div className="mt-3 p-3 bg-white rounded border" style={{ borderColor: '#dee2e6' }}>
+                              {/* Valuation */}
+                              <div className="mb-3">
+                                <strong className="d-block mb-2">📊 Đánh giá giá:</strong>
+                                <span className={`badge ${marketAnalysisResult.valuation === 'Rẻ' ? 'bg-success' : marketAnalysisResult.valuation === 'Đắt' ? 'bg-danger' : 'bg-warning'} fs-6`}>
+                                  {marketAnalysisResult.valuation}
+                                </span>
+                              </div>
+                              
+                              {/* Pros */}
+                              {marketAnalysisResult.pros && marketAnalysisResult.pros.length > 0 && (
+                                <div className="mb-3">
+                                  <strong className="d-block mb-2 text-success">✅ Ưu điểm:</strong>
+                                  <ul className="mb-0" style={{ listStyle: 'none', paddingLeft: 0 }}>
+                                    {marketAnalysisResult.pros.map((pro, index) => (
+                                      <li key={index} className="text-success mb-1">
+                                        <span className="me-2">✓</span>
+                                        {pro}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                              
+                              {/* Cons */}
+                              {marketAnalysisResult.cons && marketAnalysisResult.cons.length > 0 && (
+                                <div>
+                                  <strong className="d-block mb-2 text-danger">⚠️ Nhược điểm:</strong>
+                                  <ul className="mb-0" style={{ listStyle: 'none', paddingLeft: 0 }}>
+                                    {marketAnalysisResult.cons.map((con, index) => (
+                                      <li key={index} className="text-danger mb-1">
+                                        <span className="me-2">✗</span>
+                                        {con}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          </div>
+                        )}
                       </div>
 
                       <div className="col-md-6 mb-3">
@@ -428,16 +570,71 @@ export default function CreatePost() {
                         <div className="d-flex justify-content-between align-items-center mb-2">
                           <label className="form-label mb-0">Mô tả</label>
                           
-                          {/* AI Description Generation Button */}
-                          <PackageFeatureGuard feature="ai_tools" requiredPackages={['PRO', 'PREMIUM']}>
+                          {/* AI Description Generation Button - New Gemini API - PREMIUM only */}
+                          {authUser?.currentPackage?.name === 'PREMIUM' && (
                             <button
                               type="button"
-                              className="btn btn-sm btn-outline-success"
-                              onClick={() => alert('AI Description Generation - Coming Soon!')}
+                              className="btn btn-sm"
+                              style={{
+                                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                color: 'white',
+                                border: 'none',
+                                fontWeight: '600',
+                                boxShadow: '0 4px 6px rgba(102, 126, 234, 0.3)'
+                              }}
+                              disabled={aiLoading.description || !formData.address || !formData.propertyType || !formData.area}
+                            onClick={async () => {
+                              if (!formData.address || !formData.propertyType || !formData.area) {
+                                alert('Vui lòng điền đầy đủ: Địa chỉ, Loại nhà, Diện tích');
+                                return;
+                              }
+                              try {
+                                setAiLoading(prev => ({ ...prev, description: true }));
+                                
+                                // Extract features from IoT devices
+                                const features = formData.iotDevices.map(deviceId => {
+                                  const device = availableIoTDevices.find(d => d.id === deviceId);
+                                  return device ? device.name : deviceId;
+                                });
+                                
+                                // Build location string
+                                const location = [formData.ward, formData.district, formData.city]
+                                  .filter(Boolean)
+                                  .join(', ');
+                                
+                                const result = await aiService.generateDescription({
+                                  propertyType: formData.propertyType,
+                                  location: location || formData.address,
+                                  features: features.length > 0 ? features : ['đầy đủ tiện ích'],
+                                  area: formData.area ? parseFloat(formData.area) : null,
+                                  price: formData.price ? parseInt(formData.price) : null
+                                });
+                                
+                                if (result.success && result.description) {
+                                  setFormData(prev => ({ ...prev, description: result.description }));
+                                  alert('✨ AI đã tạo mô tả thành công!');
+                                } else {
+                                  alert(result.message || 'Có lỗi xảy ra khi tạo mô tả');
+                                }
+                              } catch (error) {
+                                console.error('AI generate description error:', error);
+                                const errorMsg = error.response?.data?.message || error.message || 'Có lỗi xảy ra';
+                                alert(`❌ ${errorMsg}`);
+                              } finally {
+                                setAiLoading(prev => ({ ...prev, description: false }));
+                              }
+                            }}
                             >
-                              🤖 AI Tạo mô tả
+                              {aiLoading.description ? (
+                                <>
+                                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                  Đang xử lý...
+                                </>
+                              ) : (
+                                '✨ AI Viết Mô Tả'
+                              )}
                             </button>
-                          </PackageFeatureGuard>
+                          )}
                         </div>
                         <textarea
                           className="form-control"

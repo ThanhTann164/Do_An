@@ -20,7 +20,7 @@ const PACKAGE_RULES = {
   PREMIUM: {
     boost_per_day: 3,
     max_posts_per_day: 20,
-    ai_tools: ["title_optimization", "description_generation", "panorama_ai"],
+    ai_tools: ["title_optimization", "description_generation", "panorama_ai", "market_analysis", "price_suggestion"],
     highlight: true,
     priority: 2,
     video_panorama: true,

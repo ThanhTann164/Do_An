@@ -2,9 +2,10 @@ import React, { useContext } from 'react';
 import { Crown, Zap, Home } from 'lucide-react';
 import { PackageContext } from '../context/PackageContext';
 import { useAuth } from '../contexts/AuthContext';
+import { getCurrentPackage } from '../utils/helpers';
 
 const PackageBadge = ({ className = "", size = "sm", showName = true }) => {
-  const { packageInfo, loading } = useContext(PackageContext);
+  const { packageInfo, loading, detail } = useContext(PackageContext);
   const { user } = useAuth();
   const isSeller = (user?.role || '').toLowerCase() === 'seller';
 
@@ -12,7 +13,7 @@ const PackageBadge = ({ className = "", size = "sm", showName = true }) => {
     return null;
   }
 
-  if (loading && !packageInfo) {
+  if (loading && !packageInfo && !user) {
     return (
       <span className={`inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-400 text-xs font-medium rounded-full animate-pulse ${className}`}>
         <span>Đang tải...</span>
@@ -20,13 +21,27 @@ const PackageBadge = ({ className = "", size = "sm", showName = true }) => {
     );
   }
 
-  if (!packageInfo) {
-    return null;
-  }
+  // Sử dụng getCurrentPackage helper để lấy package name từ user object
+  const packageName = getCurrentPackage(user);
+  
+  // Fallback về packageInfo nếu không có từ user
+  const finalPackageName = packageName !== 'FREE' || !packageInfo 
+    ? packageName 
+    : (packageInfo.packageName || 'FREE').toUpperCase();
 
-  const packageName = (packageInfo.packageName || 'FREE').toUpperCase();
-  const displayName = packageInfo?.raw?.userPackage?.display_name || packageInfo?.packageName || packageName;
-  const isExpired = resolvedPackage?.expires_at ? new Date(resolvedPackage.expires_at) < new Date() : false;
+  // Lấy display name từ nhiều nguồn
+  const displayName = user?.currentPackage?.displayName ||
+                     detail?.userPackage?.display_name ||
+                     packageInfo?.raw?.userPackage?.display_name ||
+                     packageInfo?.packageName ||
+                     (finalPackageName === 'PREMIUM' ? 'Gói Premium' : 
+                      finalPackageName === 'PRO' ? 'Gói Pro' : 'Gói Miễn Phí');
+
+  // Kiểm tra hết hạn
+  const expiresAt = user?.currentPackage?.expiresAt || 
+                    detail?.userPackage?.expires_at ||
+                    packageInfo?.raw?.userPackage?.expires_at;
+  const isExpired = expiresAt ? new Date(expiresAt) < new Date() : false;
 
   const iconMap = {
     PREMIUM: Crown,
@@ -34,7 +49,7 @@ const PackageBadge = ({ className = "", size = "sm", showName = true }) => {
     FREE: Home
   };
 
-  const Icon = iconMap[packageName] || Home;
+  const Icon = iconMap[finalPackageName] || Home;
 
   const baseStyles = "inline-flex items-center gap-1 font-medium rounded-full";
   const sizeStyles = {
@@ -51,7 +66,7 @@ const PackageBadge = ({ className = "", size = "sm", showName = true }) => {
   };
 
   return (
-    <span className={`${baseStyles} ${sizeStyles[size] || sizeStyles.sm} ${colorStyles[packageName] || colorStyles.FREE} ${className}`}>
+    <span className={`${baseStyles} ${sizeStyles[size] || sizeStyles.sm} ${colorStyles[finalPackageName] || colorStyles.FREE} ${className}`}>
       <Icon className="w-3 h-3" />
       {showName && <span>{displayName}</span>}
       {isExpired && (

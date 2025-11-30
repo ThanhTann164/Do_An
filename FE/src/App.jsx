@@ -55,6 +55,7 @@ import CreateHouse from "./pages/Seller/CreateHouse.jsx";
 import MyHome from "./pages/Seller/MyHome.jsx";
 import ModernDashboard from "./pages/Seller/ModernDashboard.jsx";
 import ViewingManagement from "./pages/Seller/ViewingManagement.jsx";
+import MarketAnalysisPage from "./pages/Seller/MarketAnalysisPage.jsx";
 import StaffLayout from "./components/StaffLayout.jsx";
 import StaffLoginRedirect from "./pages/Staff/StaffLoginRedirect.jsx";
 import StaffDashboard from "./pages/Staff/Dashboard.jsx";
@@ -155,6 +156,7 @@ export default function App() {
           <Route path="/viewings" element={<ProtectedRoute requiredRole={["Seller","Admin"]}><ViewingManagement /></ProtectedRoute>} />
           <Route path="/myhome" element={<ProtectedRoute><MyHome /></ProtectedRoute>} />
           <Route path="/seller/dashboard" element={<ProtectedRoute requiredRole="Seller"><ModernDashboard /></ProtectedRoute>} />
+          <Route path="/seller/market-analysis" element={<ProtectedRoute requiredRole="Seller"><MarketAnalysisPage /></ProtectedRoute>} />
 
           {/* Admin Routes - Requires Admin Role */}
           <Route path="/admin/dashboard" element={<ProtectedRoute requiredRole="Admin"><AdminDashboard /></ProtectedRoute>} />
