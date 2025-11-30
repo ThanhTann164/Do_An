@@ -80,10 +80,21 @@ Yêu cầu:
 
     } catch (error) {
       console.error('❌ [AI] Error generating description:', error);
+      console.error('❌ [AI] Error stack:', error.stack);
+      console.error('❌ [AI] Error details:', {
+        message: error.message,
+        name: error.name,
+        code: error.code
+      });
       return res.status(500).json({
         success: false,
         message: 'Lỗi khi tạo mô tả. Vui lòng thử lại sau.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: process.env.NODE_ENV === 'development' ? {
+          message: error.message,
+          name: error.name,
+          code: error.code,
+          stack: error.stack
+        } : undefined
       });
     }
   }
@@ -190,10 +201,21 @@ Chỉ trả về JSON, không có text nào khác.`;
 
     } catch (error) {
       console.error('❌ [AI] Error analyzing market:', error);
+      console.error('❌ [AI] Error stack:', error.stack);
+      console.error('❌ [AI] Error details:', {
+        message: error.message,
+        name: error.name,
+        code: error.code
+      });
       return res.status(500).json({
         success: false,
         message: 'Lỗi khi phân tích thị trường. Vui lòng thử lại sau.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: process.env.NODE_ENV === 'development' ? {
+          message: error.message,
+          name: error.name,
+          code: error.code,
+          stack: error.stack
+        } : undefined
       });
     }
   }
