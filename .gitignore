@@ -53,6 +53,10 @@ desktop.ini
 *.bak
 *.backup
 
+# Documentation files (Markdown)
+*.md
+!README.md
+
 # Duplicate models folder (use BE/models instead)
 models/
 
